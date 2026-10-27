@@ -485,7 +485,7 @@ function lineApi_(p, c) {
     const r = linePush_('✅ ทดสอบระบบแจ้งเตือน HRM Hydraulic\nบอทพร้อมแจ้งเตือนกลุ่มนี้แล้ว\nจะเตือนก่อนหมดกะ ' + L.before + ' นาที ถ้ายังลงระดับน้ำมันไม่ครบ\n(ตอนนี้ ' + (sn.shift === 'day' ? 'กะเช้า' : 'กะดึก') + (rotaTeam_(c, sn.shiftDate, sn.shift) ? ' ทีม ' + rotaTeam_(c, sn.shiftDate, sn.shift) : '') + ')');
     if (!r.ok) return Object.assign({ ok: false }, r);
   }
-  const out = { ok: true, hasToken: !!L.token, bot: pr.getProperty('LINE_BOT') || '', group: !!L.group, groupName: L.groupName, on: L.on, before: L.before, timer: lineTimerOn_(), lastAt: L.lastAt, lastMsg: L.lastMsg, err: L.err };
+  const out = { ok: true, hasToken: !!L.token, bot: pr.getProperty('LINE_BOT') || '', group: !!L.group, groupName: L.groupName, on: L.on, before: L.before, timer: lineTimerOn_(), lastAt: L.lastAt, lastMsg: L.lastMsg, err: L.err, hookAt: pr.getProperty('LINE_HOOK_AT') || '', hookLast: pr.getProperty('LINE_HOOK_LAST') || '' };
   {
     const sn = shiftNow_(c, new Date());
     out.now = { shift: sn.shift, shiftDate: sn.shiftDate, left: sn.left, team: rotaTeam_(c, sn.shiftDate, sn.shift), missing: shiftMissing_(sn.shiftDate, sn.shift) };
@@ -499,16 +499,20 @@ function lineApi_(p, c) {
 /* LINE webhook (LINE posts here): remember the group when the bot joins; "เช็ค" in the group replies the shift status (replies are free) */
 function lineHook_(p) {
   const L = lineProps_(), pr = PropertiesService.getScriptProperties();
+  pr.setProperties({ LINE_HOOK_AT: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss').slice(0, 16), LINE_HOOK_LAST: (p.events || []).map(e => e.type + ((e.source || {}).type ? '@' + e.source.type : '')).join(',').slice(0, 80) || 'verify' });
   (p.events || []).forEach(ev => {
     const src = ev.source || {}, gid = src.groupId || '';
-    if (ev.type === 'join' && gid) {
+    const txt = ev.type === 'message' && ev.message && ev.message.type === 'text' ? String(ev.message.text || '').trim() : '';
+    /* link this group: when the bot joins, or someone types "ตั้งกลุ่ม" (also the first message seen in a group if none is linked yet) */
+    if (gid && (ev.type === 'join' || /^(ตั้งกลุ่ม|ตั้งกลุ่มนี้|hrm)$/i.test(txt) || (!L.group && ev.type === 'message'))) {
       pr.setProperty('LINE_GROUP', gid);
       let name = ''; try { const g = lineFetch_('/group/' + gid + '/summary', 'get', null, L.token); name = (g.body && g.body.groupName) || ''; } catch (e) { }
       pr.setProperty('LINE_GROUP_NAME', name);
+      L.group = gid;
       if (ev.replyToken && L.token) lineFetch_('/message/reply', 'post', { replyToken: ev.replyToken, messages: [{ type: 'text', text: 'สวัสดีครับ 👋 บอทแจ้งเตือน HRM Hydraulic เชื่อมกับกลุ่มนี้แล้ว\nจะเตือนก่อนหมดกะถ้ายังลงระดับน้ำมันไม่ครบ\nพิมพ์ "เช็ค" เพื่อดูสถานะกะตอนนี้' }] }, L.token);
     } else if (ev.type === 'leave' && gid && gid === L.group) {
       pr.setProperty('LINE_GROUP', ''); pr.setProperty('LINE_GROUP_NAME', '');
-    } else if (ev.type === 'message' && ev.message && ev.message.type === 'text' && /^\s*(เช็ค|เช็ก|check|สถานะ)\s*$/i.test(ev.message.text || '') && ev.replyToken && L.token && (!L.group || gid === L.group)) {
+    } else if (ev.type === 'message' && /^(เช็ค|เช็ก|check|สถานะ)$/i.test(txt) && ev.replyToken && L.token && (!L.group || gid === L.group)) {
       const c = cfg_(), sn = shiftNow_(c, new Date()), miss = shiftMissing_(sn.shiftDate, sn.shift), team = rotaTeam_(c, sn.shiftDate, sn.shift);
       const t = (sn.shift === 'day' ? 'กะเช้า ' : 'กะดึก ') + thDay_(sn.shiftDate) + (team ? ' · ทีม ' + team : '') + '\n' +
         (miss.length ? 'ยังไม่ได้ลง: ' + miss.map(k => SYS_NAME[k]).join(', ') : '✅ ลงครบ 3 ระบบแล้ว') + '\nเหลือเวลา ' + Math.floor(sn.left / 60) + ' ชม. ' + (sn.left % 60) + ' นาที';
@@ -575,7 +579,7 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.8.0';
+const SERVER_VER = 'v1.8.1';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   return { ok: true, version: SERVER_VER, time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') };
