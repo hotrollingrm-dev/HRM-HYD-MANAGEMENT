@@ -350,6 +350,7 @@ function api_(p) {
     const hmOk = v => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || ''));
     if (hmOk(p.dayStart) && hmOk(p.dayEnd) && hm_(p.dayStart) < hm_(p.dayEnd)) { setCfg_('DAY_START', p.dayStart, 'เวลาเริ่มกะเช้า'); setCfg_('DAY_END', p.dayEnd, 'เวลาเริ่มกะดึก'); }
     if (p.rota != null && /^(\d{4}-\d{2}-\d{2}\|[ABC-]{2}(,[ABC-]{2}){0,59})?$/.test(String(p.rota))) setCfg_('ROTA', String(p.rota), 'ตารางหมุนกะ: วันเริ่มรอบ|เช้าดึก,… (ส่งมาจากโปรแกรมบนคอม)');
+    if (p.rotaCal != null && /^(\d{4}-\d{2}-\d{2}\|[ABC-]{2}(,[ABC-]{2}){0,1499})?$/.test(String(p.rotaCal))) setCfg_('ROTA_CAL', String(p.rotaCal), 'ปฏิทินกะรายวัน: วันแรก|เช้าดึก,… (ส่งมาจากโปรแกรมบนคอม)');
     if (p.link != null && /^(https:\/\/[^\s"'<>]{8,300})?$/.test(String(p.link))) setCfg_('PHONE_LINK', String(p.link), 'ลิงก์หน้ามือถือ (แนบในข้อความแจ้งเตือน LINE)');
     return { ok: true, names: list };
   }
@@ -393,7 +394,17 @@ function linePush_(text) {
   return { ok: true };
 }
 /* rota "2026-10-27|AB,AB,CA" → team on a shift (A/B/C or '') */
+function calTeam_(c, shiftDate, shift) {   // per-date calendar (ROTA_CAL): team, '' = nobody works, null = date not in the calendar
+  const m = /^(\d{4})-(\d{2})-(\d{2})\|(.+)$/.exec(String(c.ROTA_CAL || '')), q = /^(\d{4})-(\d{2})-(\d{2})$/.exec(shiftDate);
+  if (!m || !q) return null;
+  const days = m[4].split(','), k = Math.round((Date.UTC(+q[1], +q[2] - 1, +q[3]) - Date.UTC(+m[1], +m[2] - 1, +m[3])) / 864e5);
+  if (k < 0 || k >= days.length) return null;
+  const t = (days[k] || '--').charAt(shift === 'day' ? 0 : 1);
+  return t === '-' ? '' : t;
+}
 function rotaTeam_(c, shiftDate, shift) {
+  const ct = calTeam_(c, shiftDate, shift);
+  if (ct !== null) return ct;
   const m = /^(\d{4})-(\d{2})-(\d{2})\|(.+)$/.exec(String(c.ROTA || ''));
   if (!m) return '';
   const days = m[4].split(','), d0 = Date.UTC(+m[1], +m[2] - 1, +m[3]), q = /^(\d{4})-(\d{2})-(\d{2})$/.exec(shiftDate);
@@ -450,6 +461,7 @@ function lineTick(nowMs) {
   if (!L.on || !L.token || !L.group) return { ok: true, skip: 'off' };
   const c = cfg_(), sn = shiftNow_(c, nowMs ? new Date(nowMs) : new Date()), key = sn.shiftDate + '_' + sn.shift;
   if (sn.left > L.before || L.last === key) return { ok: true, skip: 'not_now', shift: sn };
+  if (calTeam_(c, sn.shiftDate, sn.shift) === '') return { ok: true, skip: 'no_shift', shift: sn };   // holiday / shutdown in the shift calendar
   const miss = shiftMissing_(sn.shiftDate, sn.shift);
   PropertiesService.getScriptProperties().setProperty('LINE_LAST', key);
   if (!miss.length) return { ok: true, complete: true, shift: sn };
@@ -579,7 +591,7 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.8.1';
+const SERVER_VER = 'v1.8.2';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   return { ok: true, version: SERVER_VER, time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') };
