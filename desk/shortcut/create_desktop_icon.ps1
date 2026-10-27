@@ -22,11 +22,17 @@ $shell = New-Object -ComObject WScript.Shell
 if ($exe) {
   $lnk = $shell.CreateShortcut((Join-Path $desktop "$name.lnk"))
   $lnk.TargetPath  = $exe
-  $lnk.Arguments   = "--app=$url --start-maximized"
+  # show the program as a 1920 x 1080 layout on any screen: zoom = screen width / 1920 (own browser profile so the zoom always applies)
+  $w = 1920
+  try { $w = [int](Get-CimInstance Win32_VideoController | Where-Object { $_.CurrentHorizontalResolution } | Select-Object -First 1).CurrentHorizontalResolution } catch { }
+  if (-not $w -or $w -lt 800) { $w = 1920 }
+  $zoom = [math]::Round($w / 1920, 3).ToString([Globalization.CultureInfo]::InvariantCulture)
+  $prof = Join-Path $dir 'profile'
+  $lnk.Arguments   = "--app=$url --user-data-dir=`"$prof`" --force-device-scale-factor=$zoom --start-maximized"
   $lnk.Description = 'HRM Hydraulic Management (web)'
   if (Test-Path $ico) { $lnk.IconLocation = "$ico,0" }
   $lnk.Save()
-  Write-Host "OK  Desktop icon -> $url  (opens in its own window)"
+  Write-Host "OK  Desktop icon -> $url  (own window, 1920 x 1080 layout, zoom $zoom)"
 } else {
   $file = Join-Path $desktop "$name.url"
   "[InternetShortcut]`r`nURL=$url`r`nIconFile=$ico`r`nIconIndex=0`r`n" | Set-Content -Encoding ASCII $file
