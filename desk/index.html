@@ -4908,7 +4908,7 @@ function saveRecord3(){const err=$('#r4-err');const fail=(k,v)=>{err.innerHTML=L
       Object.assign(r,{ts:p.ts,status:p.status,operator:p.rc,recorder:p.rc,team:p.tm},stamp(p.ts));recFields(r);
       if(before.time!==r.time||before.recorder!==r.recorder||before.team!==r.team||before.status!==r.status){r.editedAt=Date.now();(r.edits=r.edits||[]).push({at:r.editedAt,by:p.rc,before});nEd++}})});
   const last=plan[plan.length-1];UI.lastOp=last.rc;store.set('lastRecorder',last.rc);saveUI();
-  closeModal();commit();
+  plan.forEach(p=>{if(p.ts)showShiftOf(p.ts)});closeModal();commit();
   savedPop(nEd?'adjust':'brand',nEd?'editSaved':'savedSlots',`${fDslash(d)} · `+plan.map(p=>`${esc(T(p.sh==='day'?'dayShift':'nightShift'))} Team ${p.tm}: `+p.vals.map(x=>`${esc(T('short_'+x.id))} <b class="num">${fLit(x.n)}</b>${x.t!=null?` / <b class="num">${fTemp(x.t)}</b>°C`:''}`).join(' · ')).join('<br>'));
   if(CFG.notifications){const crit=saved.filter(x=>levelStatus(x[2],x[1])==='critical');const ab=found.filter(x=>x[0]==='abnormal');
     if(ab.length)setTimeout(()=>toast('abnormal','abnToastT',ab.map(x=>esc(T('short_'+x[1]))).join(', ')),900);else if(crit.length)setTimeout(()=>toast('low','lowToastT',crit.map(x=>esc(T('short_'+x[1]))).join(', ')),900)}}
@@ -4961,6 +4961,8 @@ function recalc(){const f=$('#evForm');if(!f)return;const type=f.dataset.type,sy
   else if(type==='leak'){const a=gn('e-after');const am=$('#e-amount');if(am&&!am.dataset.manual&&bf!=null&&a!=null)am.value=Math.max(0,Math.round(bf-a))}
   else if(type==='drain'){const a=gn('e-after');calc.innerHTML=`<div>${L('drainedAmount')}<div class="v num">${bf!=null&&a!=null?fN(Math.max(0,bf-a)):'—'} L</div></div>`}
   else if(type==='adjust'){const a=gn('e-after');const d=bf!=null&&a!=null?a-bf:null;calc.innerHTML=`<div>${L('readingDiff')}<div class="v num">${d==null?'—':(d>=0?'+':'−')+fN(Math.abs(d))} L</div></div><div class="hint" style="flex-basis:100%">${TS('notCountedUse')}</div>`}}
+/* the graph may be filtered to one shift: make sure what was just saved is visible */
+function showShiftOf(ts){if(UI.shift!=='all'&&shiftKey(ts)!==UI.shift){UI.shift='all';store.set(K_GS,'all')}}
 function saveEvent(){const f=$('#evForm');const type=f.dataset.type,id=f.dataset.id,err=$('#e-err'),sys=$('#f-sys').dataset.v;const fail=(k,v)=>{err.innerHTML=L(k,null,v);err.hidden=false};
   const etv=gv('e-time').trim();if(!/^([01]\d|2[0-3]):([0-5]\d)$/.test(etv)){const te=$('#e-time');if(te){te.classList.add('bad');te.focus()}return fail('errTimeFmt')}const ts=fromLI(gv('e-date')+'T'+etv);if(isNaN(ts))return fail('errTime');if(ts>Date.now()+5*MIN)return fail('errFuture');
   const bf=gn('e-before'),af=gn('e-after');const needLv=['refill','oil_change','leak','drain','adjust','abnormal'].includes(type);if(needLv&&(bf==null||af==null||bf<0||af<0))return fail('errBA');
@@ -4978,7 +4980,7 @@ function saveEvent(){const f=$('#evForm');const type=f.dataset.type,id=f.dataset
   if(['refill','oil_change','leak','drain','adjust'].includes(type)){const pr=recAtOrBefore(ts-MIN,sys);const status=pr?pr.status:'run';
     if(ev.recIds&&ev.recIds.length){ev.recIds.map(x=>REC.find(r=>r.id===x)).forEach((r,i)=>{if(r)Object.assign(r,{systemType:sys,ts:i?ts:ts-MIN,level:i?ev.afterLevel:ev.beforeLevel,operator:op},stamp(i?ts:ts-MIN))})}
     else{const b=makeRec(sys,ts-MIN,ev.beforeLevel,status,op,'',true),a=makeRec(sys,ts,ev.afterLevel,status,op,'',true);REC.push(b,a);ev.recIds=[b.id,a.id]}}
-  if(!id)EVTS.push(ev);closeModal();commit();
+  if(!id)EVTS.push(ev);showShiftOf(ev.ts);closeModal();commit();
   if(!id&&type==='refill')savedPop('refill','refilled',`${esc(T('short_'+sys))} · <b class="num">+${fN(ev.addedVolume)} L</b> · ${esc(oilOf(ev.oilType).name)} · <b class="num">${fBahtV(ev.totalCost)}</b> ${esc(T('inclVat'))}<br><span class="num">${fN(ev.beforeLevel)} → ${fN(ev.afterLevel)} L</span>`);
   else if(!id&&type==='oil_change')savedPop('oil_change','oilChanged',`${esc(T('short_'+sys))} · ${esc(oilOf(ev.oilType).name)} · <b class="num">${fBahtV(ev.totalCost)}</b> ${esc(T('inclVat'))}`);
   else savedPop(type,id?'updatedToast':'eventSaved',`${esc(T('short_'+sys))} · ${T('ev_'+type)} · ${fT(ts)}`)}
@@ -5412,7 +5414,7 @@ function mobImportEvents(list){const have=new Set(EVTS.map(e=>e.id));let n=0;con
 async function mobPull(manual){const c=mobCfg();if(!c.on&&!manual)return;if(!c.url||!c.key){if(manual)toast('abnormal','mobNotSet','');return}
   if(MOB.busy)return;MOB.busy=true;mobRefreshUI();
   try{const o=await mobCall({action:'pull',key:c.key});const rows=o.rows||[],evs=o.events||[],logs=o.logs||[];MOB.err='';MOB.last=Date.now();mobSendNames(false);if(o.team&&String(o.team)!==c.team){c.team=String(o.team);saveAll();syncSoon()}
-    if(rows.length||evs.length||logs.length){const {n,found}=mobImport(rows);const ne=mobImportEvents(evs);const nl=mobImportLogs(logs);if(n||ne){commit()}else if(nl){saveAll();syncSoon()}if(nl&&UI.page==='settings'){const card=$('#mob-card');if(card)card.outerHTML=mobCardHTML()}await mobCall({action:'ack',key:c.key,ids:rows.concat(evs,logs).map(r=>r.id).join(','),by:(SYNC.info&&SYNC.info.computer)||'PC'});MOB.lastN=n+ne;
+    if(rows.length||evs.length||logs.length){const {n,found}=mobImport(rows);const e0=EVTS.length,ne=mobImportEvents(evs);EVTS.slice(e0).forEach(e=>showShiftOf(e.ts));const nl=mobImportLogs(logs);if(n||ne){commit()}else if(nl){saveAll();syncSoon()}if(nl&&UI.page==='settings'){const card=$('#mob-card');if(card)card.outerHTML=mobCardHTML()}await mobCall({action:'ack',key:c.key,ids:rows.concat(evs,logs).map(r=>r.id).join(','),by:(SYNC.info&&SYNC.info.computer)||'PC'});MOB.lastN=n+ne;
       if(n||ne)toast('brand','mobImported',esc([n?T('mobImportedD',{n}):'',ne?T('mobRefillD',{n:ne}):''].filter(Boolean).join(' · ')));
       if(CFG.notifications&&found.some(x=>x[0]==='abnormal'))setTimeout(()=>toast('abnormal','abnToastT',found.filter(x=>x[0]==='abnormal').map(x=>esc(T('short_'+x[1]))).join(', ')),900)}
     else if(manual)toast('brand','mobNothing','')}
