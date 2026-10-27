@@ -5364,7 +5364,7 @@ Object.assign(A,{msSave:()=>msSave(),msRevert:()=>{render(false,false)},msStatus
 
 /* ================= mobile entry (Google Apps Script + Sheets): pull new phone readings ================= */
 const MOB={busy:false,last:0,lastN:0,err:'',timer:null};
-const mobCfg=()=>{const d={on:false,url:'',key:'',team:'',qrCode:false,page:'https://hotrollingrm-dev.github.io/HRM-HYD-MANAGEMENT/'};if(!CFG.mobile||typeof CFG.mobile!=='object')CFG.mobile={};for(const k in d)if(CFG.mobile[k]==null)CFG.mobile[k]=d[k];return CFG.mobile};
+const mobCfg=()=>{const d={on:false,url:'',key:'',team:'',qrCode:false,page:'https://hrm-hyd-management.vercel.app/'};if(!CFG.mobile||typeof CFG.mobile!=='object')CFG.mobile={};if(/^https:\/\/hotrollingrm-dev\.github\.io\/HRM-HYD-MANAGEMENT\/?$/i.test(CFG.mobile.page||''))CFG.mobile.page=d.page;for(const k in d)if(CFG.mobile[k]==null)CFG.mobile[k]=d[k];return CFG.mobile};
 async function mobCall(params){const c=mobCfg();const url=c.url.trim()+(c.url.includes('?')?'&':'?')+Object.entries(params).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
   const api=PYW();let text;
   if(api&&api.mobile_fetch){const r=await api.mobile_fetch(url);if(!r||!r.ok)throw new Error((r&&r.error)||'network');text=r.text}
@@ -5428,7 +5428,7 @@ function mobCardHTML(){const c=mobCfg();const ok=/^(https:\/\/script\.google(use
   return `<div class="card" id="mob-card"><div class="card-head">${L('mobTitle','card-title')}<span id="mob-status" style="margin-left:auto">${mobStatusHTML()}</span></div>
     <p class="hint" style="margin:0 0 12px">${T('mobHint')}<br>${S2('mobHint')}</p>
     <div class="mob-grid"><div class="mob-fields">
-      <label class="field">${L('mobUrl','flabel')}<input class="inp" id="mob-url" value="${esc(c.url)}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false"></label><label class="field">${L('mobPage','flabel')}<input class="inp" id="mob-page" value="${esc(c.page||'')}" placeholder="https://ชื่อบัญชี.github.io/ชื่อrepo/" autocomplete="off" spellcheck="false"></label>
+      <label class="field">${L('mobUrl','flabel')}<input class="inp" id="mob-url" value="${esc(c.url)}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false"></label><label class="field">${L('mobPage','flabel')}<input class="inp" id="mob-page" value="${esc(c.page||'')}" placeholder="https://hrm-hyd-management.vercel.app/" autocomplete="off" spellcheck="false"></label>
       <label class="field">${L('mobKey','flabel')}<input class="inp" id="mob-key" value="${esc(c.key)}" placeholder="SYNC_KEY" autocomplete="off" spellcheck="false"></label>
       <label class="opt-row" for="mob-on">${L('mobAuto')}<span class="switch"><input type="checkbox" id="mob-on" ${c.on?'checked':''}><i></i></span></label>
       <div class="set-actions"><button class="btn btn-tonal" data-act="mobTest">${li('refresh',22)}${L('mobTest')}</button><button class="btn btn-plain" data-act="mobPullNow">${li('upload',22)}${L('mobPullNow')}</button></div></div>

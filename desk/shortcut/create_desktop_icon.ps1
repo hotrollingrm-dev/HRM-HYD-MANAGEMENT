@@ -1,5 +1,5 @@
 # HRM HYDRAULIC MANAGEMENT - desktop icon that opens the web app in its own window (Edge / Chrome app mode)
-$url  = 'https://hotrollingrm-dev.github.io/HRM-HYD-MANAGEMENT/desk/'
+$url  = 'https://hrm-hyd-management.vercel.app/desk/'
 $name = 'HRM Hydraulic Management'
 $dir  = Join-Path $env:LOCALAPPDATA 'HRM Hydraulic Web'
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
