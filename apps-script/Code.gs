@@ -383,11 +383,13 @@ function lineFetch_(path, method, body, token) {
   let j = {}; try { j = JSON.parse(r.getContentText() || '{}'); } catch (e) { j = {}; }
   return { code: r.getResponseCode(), body: j };
 }
-function linePush_(text) {
+function linePush_(text, flex) {
   const L = lineProps_();
   if (!L.token) return { ok: false, error: 'no_token' };
   if (!L.group) return { ok: false, error: 'no_group' };
-  const r = lineFetch_('/message/push', 'post', { to: L.group, messages: [{ type: 'text', text: String(text).slice(0, 4900) }] }, L.token);
+  const plain = { type: 'text', text: String(text).slice(0, 4900) };
+  let r = lineFetch_('/message/push', 'post', { to: L.group, messages: [flex || plain] }, L.token);
+  if (flex && r.code === 400) r = lineFetch_('/message/push', 'post', { to: L.group, messages: [plain] }, L.token);   // card refused → plain text
   const pr = PropertiesService.getScriptProperties();
   if (r.code !== 200) { const e = 'LINE ' + r.code + ': ' + (r.body.message || ''); pr.setProperty('LINE_ERR', e); return { ok: false, error: 'line_' + r.code, message: r.body.message || '' }; }
   pr.setProperties({ LINE_ERR: '', LINE_LAST_AT: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss').slice(0, 16), LINE_LAST_MSG: String(text).slice(0, 300) });
@@ -447,6 +449,30 @@ function normDate_(v) {
 }
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 function thDay_(ymd) { const p = ymd.split('-'); return (+p[2]) + ' ' + TH_MON[+p[1] - 1] + ' ' + String(+p[0] + 543).slice(-2); }
+/* ---- LINE card (Flex Message): coloured header, big team/shift, ✅/❌ per system, time left, button to the phone page ---- */
+const SYS_FULL = { servo: 'Servo Hydraulic', auxiliary: 'Auxiliary Hydraulic', lubrication: 'Oil Lubrication' };
+const leftText_ = m => m >= 60 ? Math.floor(m / 60) + ' ชม. ' + (m % 60) + ' นาที' : m + ' นาที';
+function shiftCard_(c, sn, miss, kind) {   // kind: alert | check | test
+  const team = rotaTeam_(c, sn.shiftDate, sn.shift), shName = sn.shift === 'day' ? 'กะเช้า' : 'กะดึก';
+  const range = sn.shift === 'day' ? (c.DAY_START || '08:00') + '–' + (c.DAY_END || '20:00') : (c.DAY_END || '20:00') + '–' + (c.DAY_START || '08:00');
+  const done = !miss.length, RED = '#E53935', GREEN = '#1E9E5B', BLUE = '#2F6BEA';
+  const head = kind === 'test' ? '✅ ทดสอบระบบแจ้งเตือน' : done ? '✅ ลงระดับน้ำมันครบแล้ว' : kind === 'alert' ? '⚠️ แจ้งเตือน! ยังไม่ลงระดับน้ำมัน' : '📋 สถานะกะตอนนี้';
+  const color = kind === 'test' ? BLUE : done ? GREEN : RED;
+  const txt = (t, o) => Object.assign({ type: 'text', text: String(t), wrap: true }, o || {});
+  const rows = SYS.map(x => { const bad = miss.indexOf(x[0]) >= 0; return { type: 'box', layout: 'horizontal', spacing: 'md', paddingAll: '8px', cornerRadius: '8px', backgroundColor: bad ? '#FDECEC' : '#EAF7F0',
+    contents: [txt(bad ? '❌' : '✅', { flex: 0, size: 'md' }), txt(SYS_FULL[x[0]], { flex: 5, size: 'md', weight: 'bold', color: bad ? '#B42318' : '#14653F' }), txt(bad ? 'ยังไม่ลง' : 'ลงแล้ว', { flex: 2, size: 'sm', align: 'end', color: bad ? '#B42318' : '#14653F', gravity: 'center' })] }; });
+  const body = [txt((team ? 'ทีม ' + team + ' · ' : '') + shName, { size: 'xxl', weight: 'bold', color: '#1D2533' }), txt(thDay_(sn.shiftDate) + '  (' + range + ')', { size: 'sm', color: '#6B7280', margin: 'xs' }),
+    { type: 'separator', margin: 'lg' }, { type: 'box', layout: 'vertical', spacing: 'sm', margin: 'lg', contents: rows }];
+  if (kind === 'test') body.push(txt('บอทจะเตือนกลุ่มนี้ก่อนหมดกะ ' + lineProps_().before + ' นาที ถ้ายังลงไม่ครบ 3 ระบบ · พิมพ์ "เช็ค" ดูสถานะได้ทุกเมื่อ', { size: 'sm', color: '#4B5563', margin: 'lg' }));
+  else if (!done) body.push({ type: 'box', layout: 'horizontal', margin: 'lg', paddingAll: '10px', cornerRadius: '8px', backgroundColor: '#FFF4E5', contents: [txt('⏰ เหลือเวลา ' + leftText_(sn.left) + (kind === 'alert' ? ' ลงด้วยจ้า 🙏' : ''), { weight: 'bold', color: '#B45309', size: 'md' })] });
+  const link = /^https:\/\/[^\s]{8,900}$/.test(c.PHONE_LINK || '') ? c.PHONE_LINK : '';
+  const bubble = { type: 'bubble', size: 'mega',
+    header: { type: 'box', layout: 'vertical', backgroundColor: color, paddingAll: '16px', contents: [txt(head, { color: '#FFFFFF', weight: 'bold', size: 'lg' }), txt('HRM Hydraulic · ระดับน้ำมันไฮดรอลิก', { color: '#FFFFFFCC', size: 'xs', margin: 'xs' })] },
+    body: { type: 'box', layout: 'vertical', paddingAll: '16px', contents: body } };
+  if (link && !done) bubble.footer = { type: 'box', layout: 'vertical', paddingAll: '12px', contents: [{ type: 'button', style: 'primary', color: color, height: 'md', action: { type: 'uri', label: '📱 เปิดหน้าบันทึก', uri: link } }] };
+  const alt = (kind === 'test' ? '✅ ทดสอบระบบแจ้งเตือน · ' : '') + (team ? 'ทีม ' + team + ' ' : '') + shName + ' ' + thDay_(sn.shiftDate) + ' · ' + (done ? 'ลงครบ 3 ระบบแล้ว' : '⚠️ ยังไม่ลง: ' + miss.map(k => SYS_NAME[k]).join(', '));
+  return { type: 'flex', altText: alt.slice(0, 390), contents: bubble };
+}
 function alertText_(c, sn, miss) {
   const team = rotaTeam_(c, sn.shiftDate, sn.shift), shName = sn.shift === 'day' ? 'กะเช้า' : 'กะดึก';
   const range = sn.shift === 'day' ? (c.DAY_START || '08:00') + '–' + (c.DAY_END || '20:00') : (c.DAY_END || '20:00') + '–' + (c.DAY_START || '08:00');
@@ -465,7 +491,7 @@ function lineTick(nowMs) {
   const miss = shiftMissing_(sn.shiftDate, sn.shift);
   PropertiesService.getScriptProperties().setProperty('LINE_LAST', key);
   if (!miss.length) return { ok: true, complete: true, shift: sn };
-  const r = linePush_(alertText_(c, sn, miss));
+  const r = linePush_(alertText_(c, sn, miss), shiftCard_(c, sn, miss, 'alert'));
   return { ok: r.ok, sent: r.ok, missing: miss, shift: sn, error: r.error };
 }
 /* run once from the editor: allows sending to LINE and makes the 5-minute timer */
@@ -494,7 +520,7 @@ function lineApi_(p, c) {
   const L = lineProps_();
   if (p.fn === 'test') {
     const sn = shiftNow_(c, new Date());
-    const r = linePush_('✅ ทดสอบระบบแจ้งเตือน HRM Hydraulic\nบอทพร้อมแจ้งเตือนกลุ่มนี้แล้ว\nจะเตือนก่อนหมดกะ ' + L.before + ' นาที ถ้ายังลงระดับน้ำมันไม่ครบ\n(ตอนนี้ ' + (sn.shift === 'day' ? 'กะเช้า' : 'กะดึก') + (rotaTeam_(c, sn.shiftDate, sn.shift) ? ' ทีม ' + rotaTeam_(c, sn.shiftDate, sn.shift) : '') + ')');
+    const r = linePush_('✅ ทดสอบระบบแจ้งเตือน HRM Hydraulic\nบอทพร้อมแจ้งเตือนกลุ่มนี้แล้ว\nจะเตือนก่อนหมดกะ ' + L.before + ' นาที ถ้ายังลงระดับน้ำมันไม่ครบ\n(ตอนนี้ ' + (sn.shift === 'day' ? 'กะเช้า' : 'กะดึก') + (rotaTeam_(c, sn.shiftDate, sn.shift) ? ' ทีม ' + rotaTeam_(c, sn.shiftDate, sn.shift) : '') + ')', shiftCard_(c, sn, shiftMissing_(sn.shiftDate, sn.shift), 'test'));
     if (!r.ok) return Object.assign({ ok: false }, r);
   }
   const out = { ok: true, hasToken: !!L.token, bot: pr.getProperty('LINE_BOT') || '', group: !!L.group, groupName: L.groupName, on: L.on, before: L.before, timer: lineTimerOn_(), lastAt: L.lastAt, lastMsg: L.lastMsg, err: L.err, hookAt: pr.getProperty('LINE_HOOK_AT') || '', hookLast: pr.getProperty('LINE_HOOK_LAST') || '' };
@@ -528,7 +554,8 @@ function lineHook_(p) {
       const c = cfg_(), sn = shiftNow_(c, new Date()), miss = shiftMissing_(sn.shiftDate, sn.shift), team = rotaTeam_(c, sn.shiftDate, sn.shift);
       const t = (sn.shift === 'day' ? 'กะเช้า ' : 'กะดึก ') + thDay_(sn.shiftDate) + (team ? ' · ทีม ' + team : '') + '\n' +
         (miss.length ? 'ยังไม่ได้ลง: ' + miss.map(k => SYS_NAME[k]).join(', ') : '✅ ลงครบ 3 ระบบแล้ว') + '\nเหลือเวลา ' + Math.floor(sn.left / 60) + ' ชม. ' + (sn.left % 60) + ' นาที';
-      lineFetch_('/message/reply', 'post', { replyToken: ev.replyToken, messages: [{ type: 'text', text: t }] }, L.token);
+      const rr = lineFetch_('/message/reply', 'post', { replyToken: ev.replyToken, messages: [shiftCard_(c, sn, miss, 'check')] }, L.token);
+      if (rr.code === 400) lineFetch_('/message/reply', 'post', { replyToken: ev.replyToken, messages: [{ type: 'text', text: t }] }, L.token);
     }
   });
   return { ok: true };
@@ -591,7 +618,7 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.8.2';
+const SERVER_VER = 'v1.8.3';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   return { ok: true, version: SERVER_VER, time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') };
