@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="th">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#E9EDF4">
+<title>HRM Hydraulic · บันทึกระดับน้ำมัน</title>
+<style>
+:root{--bg:#E9EDF4;--card:rgba(255,255,255,.86);--line:#DDE2EA;--fg:#121821;--fg2:#566070;--fg3:#8B93A1;--pri:#2A64E8;--pri-s:#E4ECFD;--run:#17904F;--stop:#667082;--bad:#D23A40;--warn:#D9640F;--servo:#4F7FEA;--aux:#1E9E91;--lub:#D69330;--r:20px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 Thonburi,"Sarabun","Noto Sans Thai","Leelawadee UI",system-ui,-apple-system,sans-serif}
+body{background:radial-gradient(1200px 600px at 10% -10%,#DCE6FF 0,transparent 60%),radial-gradient(900px 500px at 110% 10%,#DDF3EE 0,transparent 55%),var(--bg);min-height:100vh}
+.wrap{max-width:560px;margin:0 auto;padding:14px 14px 150px}
+.top{display:flex;align-items:center;gap:12px;margin:4px 2px 14px}
+.logo{width:42px;height:42px;border-radius:13px;background:linear-gradient(160deg,#5B8CFF,#2A64E8);display:grid;place-items:center;flex:none;box-shadow:0 6px 16px rgba(42,100,232,.3)}
+.top h1{margin:0;font-size:19px;line-height:1.15}.top small{display:block;font-size:12.5px;color:var(--fg2);font-weight:500}
+.card{background:var(--card);-webkit-backdrop-filter:blur(20px) saturate(140%);backdrop-filter:blur(20px) saturate(140%);border:1px solid rgba(255,255,255,.7);border-radius:var(--r);box-shadow:0 8px 24px rgba(20,40,90,.08);padding:14px;margin-bottom:12px}
+.lbl{display:block;font-size:13px;font-weight:700;color:var(--fg2);margin:0 0 6px}.lbl span{font-weight:500;color:var(--fg3);margin-left:4px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input,select{width:100%;height:52px;border:1.5px solid var(--line);border-radius:14px;background:#fff;padding:0 14px;font:inherit;font-size:19px;color:var(--fg);outline:none;-webkit-appearance:none;appearance:none}
+select{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%23535D6D' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 16px center;padding-right:40px;font-weight:700;letter-spacing:.5px}
+select.bad{border-color:var(--bad);background-color:#FDF0F0}
+input:focus,select:focus{border-color:var(--pri);box-shadow:0 0 0 4px var(--pri-s)}
+input.bad{border-color:var(--bad);background:#FDF0F0}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:4px;border-radius:15px;background:#EEF1F6}
+.seg button small{display:block;font-size:11.5px;font-weight:600;opacity:.75;margin-top:1px}
+.seg button{height:46px;line-height:1.15;border:0;border-radius:11px;background:transparent;font:inherit;font-size:15.5px;font-weight:700;color:var(--fg2)}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--pri);box-shadow:0 2px 8px rgba(20,40,90,.12)}
+.seg.st button[data-v="stop"][aria-pressed="true"]{color:var(--stop)}
+.seg.st button[data-v="run"][aria-pressed="true"]{color:var(--run)}
+.sys{border-left:5px solid var(--c);padding-left:12px}
+.sys h2{display:flex;align-items:center;justify-content:space-between;margin:0 0 8px;font-size:16px}.sys h2 small{font-size:12px;color:var(--fg3);font-weight:600}
+.unit{position:relative}.unit input{padding-right:46px;text-align:right;font-size:22px;font-weight:700}
+.unit i{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-style:normal;font-weight:700;color:var(--fg3);pointer-events:none}
+.hint{font-size:12.5px;color:var(--fg3);margin:6px 2px 0}
+.last{font-size:12.5px;color:var(--fg2);margin-top:6px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:58px;border:0;border-radius:17px;font:inherit;font-size:18px;font-weight:800;color:#fff;background:linear-gradient(180deg,#4A80F5,#2A64E8);box-shadow:0 10px 24px rgba(42,100,232,.35)}
+.btn:disabled{opacity:.55}
+.btn.ghost{background:#fff;color:var(--pri);box-shadow:none;border:1.5px solid var(--line);height:48px;font-size:15.5px}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(233,237,244,0),rgba(233,237,244,.96) 30%)}
+.bar .in{max-width:560px;margin:0 auto}
+.err{display:none;margin:0 0 10px;padding:10px 12px;border-radius:12px;background:#FDECEC;color:var(--bad);font-weight:700;font-size:14.5px}
+.pend{display:none;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;padding:10px 12px;border-radius:14px;background:#FFF4E5;color:#8A4B00;font-weight:700;font-size:14px}
+.pend button{border:0;border-radius:10px;padding:8px 12px;background:#fff;font:inherit;font-weight:700;color:#8A4B00}
+.recent div{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}.recent div:first-child{border-top:0}
+.recent b{font-weight:700}.recent span{color:var(--fg2);text-align:right}
+.pop{position:fixed;top:0;right:0;bottom:0;left:0;display:none;place-items:center;padding:20px;background:rgba(18,24,33,.35);z-index:9}
+.pop .box{width:100%;max-width:420px;background:#fff;border-radius:24px;padding:22px;text-align:center;box-shadow:0 30px 60px rgba(0,0,0,.25)}
+.ok{width:64px;height:64px;margin:0 auto 10px;border-radius:50%;background:#E3F5EB;display:grid;place-items:center}
+.pop h3{margin:0 0 4px;font-size:20px}.pop p{margin:0 0 16px;color:var(--fg2);font-size:14.5px;line-height:1.5}
+.gate{max-width:420px;margin:12vh auto 0}
+.gate h2{margin:0 0 4px;font-size:20px}.gate p{margin:0 0 14px;color:var(--fg2);font-size:14px}
+.gate input{text-align:center;letter-spacing:.3em;font-size:24px;font-weight:800;margin-bottom:12px}
+.who{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--fg2);margin:0 2px 10px}.who button{border:0;background:none;color:var(--pri);font:inherit;font-weight:700}
+/* refill mode */
+.mode{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;border-radius:18px;background:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.8);margin-bottom:12px;box-shadow:0 6px 18px rgba(20,40,90,.07)}
+.mode button{height:54px;border:0;border-radius:14px;background:transparent;font:inherit;font-size:16px;font-weight:800;color:var(--fg2);display:flex;align-items:center;justify-content:center;gap:8px;line-height:1.1}
+.mode button small{display:block;font-size:11px;font-weight:600;opacity:.75}
+.mode button[aria-pressed="true"]{background:#fff;color:var(--pri);box-shadow:0 3px 10px rgba(20,40,90,.14)}
+.mode button[data-v="act"][aria-pressed="true"]{color:var(--run)}
+.seg.sys3 button{height:54px;font-size:14.5px}
+.oilname{margin:8px 2px 0;font-size:13px;color:var(--fg2)}.oilname b{color:var(--fg)}
+.stepper{display:grid;grid-template-columns:64px 1fr 64px;gap:8px;align-items:center}
+.stepper button{height:58px;border:0;border-radius:16px;background:#EEF1F6;font:inherit;font-size:30px;font-weight:700;color:var(--pri);line-height:1}
+.stepper button:active{background:var(--pri-s)}
+.stepper input{height:58px;text-align:center;font-size:26px;font-weight:800}
+.tankunit{display:block;text-align:center;margin-top:4px;font-size:13px;color:var(--fg2);font-weight:600}
+.reasons{display:grid;gap:8px}
+.reasons button{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 14px;border:1.5px solid var(--line);border-radius:16px;background:#fff;font:inherit;font-size:16.5px;font-weight:700;color:var(--fg);text-align:left}
+.reasons button i{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid #C3CAD6;display:grid;place-items:center}
+.reasons button[aria-pressed="true"]{border-color:var(--run);background:#EAF7F0;color:#0F6B39}
+.reasons button[aria-pressed="true"] i{border-color:var(--run);background:var(--run)}
+.reasons button[aria-pressed="true"] i:after{content:'';width:8px;height:8px;border-radius:50%;background:#fff}
+textarea{width:100%;min-height:84px;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;font:inherit;font-size:17px;color:var(--fg);outline:none;resize:vertical;margin-top:8px}
+textarea:focus{border-color:var(--pri);box-shadow:0 0 0 4px var(--pri-s)}textarea.bad{border-color:var(--bad);background:#FDF0F0}
+.btn.act{background:var(--ac,#17904F);box-shadow:0 10px 24px rgba(20,40,90,.22)}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.acts button{display:flex;align-items:center;gap:10px;min-height:64px;padding:10px 12px;border:1.5px solid var(--line);border-radius:16px;background:#fff;font:inherit;font-size:15.5px;font-weight:800;color:var(--fg);text-align:left;line-height:1.15}
+.acts button svg{flex:none;color:var(--ac)}.acts button small{display:block;font-size:11px;font-weight:600;color:var(--fg3)}
+.acts button[aria-pressed="true"]{border-color:var(--ac);box-shadow:inset 0 0 0 1.5px var(--ac);background:#fff}
+.calc{margin-top:8px;padding:8px 12px;border-radius:12px;background:#FDF0F0;color:#9B2328;font-size:14px}
+.tip{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;padding:12px 14px;border-radius:16px;background:#EAF1FE;color:#1D4BB8;font-size:13.5px;line-height:1.45}
+.tip b{display:block;font-size:14.5px}.tip button{flex:none;border:0;background:#fff;border-radius:10px;padding:6px 10px;font:inherit;font-weight:700;color:#1D4BB8}
+[hidden]{display:none!important}
+.ck{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}.ck:first-child{border-top:0}
+.ck i{flex:none;width:24px;height:24px;border-radius:50%;margin-top:2px;background:#C3CAD6}
+.ck i.ok{background:var(--run)}.ck i.bad{background:var(--bad)}.ck i.warn{background:var(--warn)}.ck i.wait{background:#C3CAD6}
+.ck b{display:block;font-size:15px}.ck span{display:block;font-size:13.5px;color:var(--fg2)}
+#ck-sum b{display:block;font-size:19px}#ck-sum b.yes{color:var(--run)}#ck-sum b.no{color:var(--bad)}#ck-sum span{font-size:14px;color:var(--fg2)}
+.ua{font-size:12px;color:var(--fg2);word-break:break-all}
+.rec-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.rec-chips button{border:1.5px solid var(--line);background:#fff;border-radius:12px;min-height:40px;padding:6px 12px;font:inherit;font-size:15px;font-weight:700;letter-spacing:.5px;color:var(--fg2)}
+.rec-chips button b{color:var(--pri);font-weight:800}
+.rec-chips button[aria-pressed="true"]{border-color:var(--pri);background:var(--pri-s);color:var(--pri)}
+.rec-chips span{font-size:13px;color:var(--bad)}
+.recent b{display:flex;flex-direction:column;gap:6px}
+.rx{display:flex;gap:6px;font-style:normal}
+.recent .lg b,.recent .lg span{color:var(--fg3)}.recent .lg span{text-decoration:line-through;text-decoration-color:rgba(130,139,154,.6)}.recent .lg i{font-style:normal;font-weight:700;color:var(--warn);text-decoration:none;display:inline-block}
+.rx button{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:5px 10px;font:inherit;font-size:13px;font-weight:700;color:var(--pri)}
+.rx button[data-x="del"]{color:var(--bad)}
+.ask-b{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ask-b .btn{height:50px;font-size:15.5px}
+.btn.danger{background:linear-gradient(180deg,#E25156,#D23A40);box-shadow:0 10px 24px rgba(210,58,64,.28)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div class="pop" id="pop"><div class="box"><div class="ok"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#17904F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><h3 id="pop-t">ส่งข้อมูลเรียบร้อย</h3><p id="pop-d"></p><button class="btn" onclick="hidePop()">ตกลง · OK</button></div></div>
+<script>
+/* small polyfills for older phones */
+if(window.Element&&!Element.prototype.matches)Element.prototype.matches=Element.prototype.msMatchesSelector||Element.prototype.webkitMatchesSelector;
+if(window.Element&&!Element.prototype.closest)Element.prototype.closest=function(s){var el=this;while(el&&el.nodeType===1){if(el.matches(s))return el;el=el.parentElement}return null};
+/* any script error: show it on screen and keep a copy in the sheet (ClientErrors) so it can be checked */
+var _errSent=0;
+function reportErr(where,e){var msg=String((e&&(e.message||e))||'error').slice(0,300);try{var b=document.getElementById('crash');if(!b){b=document.createElement('div');b.id='crash';b.style.cssText='position:fixed;left:8px;right:8px;top:8px;z-index:99;padding:10px 12px;border-radius:12px;background:#FDF0F0;color:#9B2328;font:13px/1.4 sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.15)';document.body.appendChild(b)}
+  b.innerHTML='<b>มีข้อผิดพลาดบนเครื่องนี้</b> ลองปิดแล้วเปิดใหม่ ถ้ายังไม่ได้ ให้แคปหน้าจอนี้ส่งผู้ดูแล<br><small>'+String(msg).replace(/[<>&]/g,'')+' · '+String(navigator.userAgent||'').slice(0,120).replace(/[<>&]/g,'')+'</small>'}catch(_){}
+  try{if(_errSent<3&&window.google&&google.script&&google.script.run){_errSent++;google.script.run.logClientError({where:where,msg:msg,ua:String(navigator.userAgent||'').slice(0,200),url:String(location.href||'').slice(0,100)})}}catch(_){}}
+window.onerror=function(m,src,line,col,err){reportErr('js:'+line+':'+col,err||m)};
+window.addEventListener&&window.addEventListener('unhandledrejection',function(e){reportErr('promise',e&&e.reason)});
+var BOOT=<?!= boot ?>;
+var PAGE_VER='v1.7.2';
+var LS={get:function(k){try{return localStorage.getItem('hrmMob_'+k)}catch(e){return null}},set:function(k,v){try{localStorage.setItem('hrmMob_'+k,v)}catch(e){}},del:function(k){try{localStorage.removeItem('hrmMob_'+k)}catch(e){}}};
+var GS=(window.google&&google.script&&google.script.run)?google.script.run:null;
+function call(fn,args){return new Promise(function(res,rej){if(!GS){rej(new Error('offline'));return}var r=GS.withSuccessHandler(res).withFailureHandler(rej);r[fn].apply(r,args)})}
+var SYS=[['servo','Servo Hydraulic','servoL','servoT','--servo','Quinlubric 888-46'],['auxiliary','Auxiliary Hydraulic','auxL','auxT','--aux','Quinlubric 888-46'],['lubrication','Oil Lubrication','lubL','lubT','--lub','SHELL OMALA S2 G460']];
+var MS=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+var ERR={bad_code:'รหัสทีมไม่ถูกต้อง',bad_time:'เวลาต้องเป็นแบบ 24 ชม. เช่น 08:30',time_shift:'เวลาไม่อยู่ในช่วงของกะที่เลือก',no_recorder:'กรุณาเลือกชื่อผู้บันทึก',bad_recorder:'ชื่อผู้บันทึกไม่อยู่ในรายชื่อ',bad_team:'กรุณาเลือกทีม',no_values:'กรอกระดับน้ำมันอย่างน้อย 1 ระบบ',bad_level:'ระดับน้ำมันไม่ถูกต้อง',bad_temp:'อุณหภูมิต้องอยู่ระหว่าง -20 ถึง 200 °C',temp_without_level:'กรอกอุณหภูมิแล้วต้องกรอกระดับน้ำมันของระบบนั้นด้วย',future:'ไม่สามารถลงข้อมูลล่วงหน้าได้',too_old:'ย้อนหลังได้ไม่เกิน 62 วัน',bad_date:'วันที่ไม่ถูกต้อง',bad_system:'กรุณาเลือกระบบ',bad_drained:'กรอกปริมาณน้ำมันเก่าที่ถ่ายออก (L)',leak_not_lower:'ระดับปัจจุบันต้องน้อยกว่าก่อนพบรั่ว',no_location:'กรุณาระบุจุดที่รั่ว',no_action:'กรุณาพิมพ์งานที่ทำ',bad_type:'ประเภทเหตุการณ์ไม่ถูกต้อง',bad_tanks:'จำนวนถังต้องเป็น 1–50',after_not_higher:'ระดับหลังเติมต้องมากกว่าก่อนเติม',bad_reason:'กรุณาเลือกสาเหตุ',no_reason_text:'กรุณาพิมพ์สาเหตุที่เติม',no_before_after:'กรอกระดับน้ำมันก่อนและหลัง'};
+var REASONS={refill:[['oil_leakage','น้ำมันรั่ว'],['mt_drain','MT มีการ Drain น้ำมัน'],['other','ระบุเอง']],oil_change:[['scheduled_oil_change','เปลี่ยนตามรอบ'],['oil_degradation','น้ำมันเสื่อมสภาพ'],['other','ระบุเอง']]};
+var IC=function(p){return '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>'};
+var ACTS=[['refill','เติมน้ำมัน','Refill','#17904F',IC('<path d="M12 3.5c-3 3.9-5.2 6.8-5.2 9.4a5.2 5.2 0 0 0 10.4 0c0-2.6-2.2-5.5-5.2-9.4z"/><path d="M12 10.5v5M9.5 13h5"/>')],
+  ['oil_change','เปลี่ยนน้ำมัน','Oil change','#0F86A8',IC('<path d="M20 12a8 8 0 0 1-13.7 5.6M4 12a8 8 0 0 1 13.7-5.6"/><path d="M18 3v4h-4M6 21v-4h4"/>')],
+  ['leak','พบน้ำมันรั่ว','Leak found','#D23A40',IC('<path d="M12 3.5c-3 3.9-5.2 6.8-5.2 9.4a5.2 5.2 0 0 0 10.4 0c0-2.6-2.2-5.5-5.2-9.4z"/><path d="M12 9v4.5M12 16.3v.2"/>')],
+  ['maint','ซ่อมบำรุง','Maintenance','#6F4FE0',IC('<path d="M14.5 6.5a3.5 3.5 0 0 0-4.7 4.4L4 16.7 7.3 20l5.8-5.8a3.5 3.5 0 0 0 4.4-4.7l-2.2 2.2-2.3-.8-.8-2.3z"/>')]];
+/* actions offered on phones (the server and the PC also accept oil_change / leak / maint) */
+var PHONE_ACTS=['refill'];ACTS=ACTS.filter(function(a){return PHONE_ACTS.indexOf(a[0])>=0});
+var ONE_ACT=ACTS.length===1;
+function actTitle(A){return A[0]==='refill'?'บันทึกการเติมน้ำมัน':'บันทึก'+A[1]}
+function actBtn(A){return A[0]==='refill'?'บันทึกการเติม · Save refill':'บันทึก'+A[1]+' · Save'}
+function actDone(A){return A[0]==='refill'?'บันทึกการเติมเรียบร้อย':'บันทึก'+A[1]+'เรียบร้อย'}
+var hm=function(s){var p=String(s).split(':');return (+p[0]||0)*60+(+p[1]||0)};
+var pad=function(n){return (n<10?'0':'')+n};
+var ymd=function(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+function nowShift(){var d=new Date(),m=d.getHours()*60+d.getMinutes(),ds=hm(BOOT.dayStart),de=hm(BOOT.dayEnd);if(m>=ds&&m<de)return {shift:'day',date:ymd(d)};var x=new Date(d);if(m<ds)x.setDate(x.getDate()-1);return {shift:'night',date:ymd(x)}}
+function uid(){var s='';var a=window.crypto&&crypto.getRandomValues?crypto.getRandomValues(new Uint8Array(12)):null;for(var i=0;i<12;i++)s+=('0'+((a?a[i]:Math.floor(Math.random()*256))).toString(16)).slice(-2);return 'M'+Date.now().toString(36)+'-'+s}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function thDate(s){var p=s.split('-');return (+p[2])+' '+MS[+p[1]-1]+' '+(+p[0]+543)}
+var st={shift:null,date:null,team:LS.get('team')||'',status:'run',mode:'read',act:'refill',rsys:'',tanks:1,reason:''};
+function getCode(){return LS.get('code')||BOOT.code||''}
+
+function gate(msg){var b=document.getElementById('bar');if(b)b.remove();
+  var inner='<div class="err" id="gerr"'+(msg?' style="display:block"':'')+'>'+esc(msg||'')+'</div><input id="code" name="c" inputmode="numeric" autocomplete="off" placeholder="••••••"><button class="btn" id="gbtn" type="submit">เข้าใช้งาน · Enter</button>';
+  document.getElementById('app').innerHTML='<div class="gate card"><div class="top" style="margin:0 0 12px"><div class="logo">'+drop()+'</div><div><h1>HRM Hydraulic</h1><small>'+esc(BOOT.machine)+'</small></div></div><h2>ใส่รหัสทีม</h2><p>Team code · ใส่ครั้งเดียว หน้านี้จะจำไว้</p>'+
+    (BOOT.url?'<form method="get" action="'+esc(BOOT.url)+'" target="_top" id="gform">'+inner+'</form>':inner)+'</div>';
+  var c=document.getElementById('code');c.focus();var fm=document.getElementById('gform');
+  if(fm)fm.onsubmit=function(e){var v=c.value.trim();if(!v){e.preventDefault();return}var g=document.getElementById('gbtn');g.disabled=true;g.textContent='กำลังตรวจสอบ…'};
+  else{document.getElementById('gbtn').onclick=tryCode;c.onkeydown=function(e){if(e.key==='Enter')tryCode()}}}
+function tryCode(){var c=document.getElementById('code').value.trim();if(!c)return;var b=document.getElementById('gbtn');b.disabled=true;b.textContent='กำลังตรวจสอบ…';
+  call('checkCode',[c]).then(function(r){if(r&&r.ok){LS.set('code',c);form()}else gate('รหัสทีมไม่ถูกต้อง · Wrong code')}).catch(function(){gate('เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง · No connection')})}
+function drop(){return '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 3.5c-3.6 4.6-6.2 8.1-6.2 11.2a6.2 6.2 0 0 0 12.4 0c0-3.1-2.6-6.6-6.2-11.2z" fill="#fff"/></svg>'}
+
+function form(){var ns=nowShift();st.shift=ns.shift;st.date=ns.date;var d=new Date();
+  var h='<div class="top"><div class="logo">'+drop()+'</div><div><h1 id="ttl">บันทึกระดับน้ำมัน</h1><small>'+esc(BOOT.machine)+' · Oil Level Record</small></div></div>'+
+  (BOOT.code&&!LS.get('a2hs')?'<div class="tip" id="tip"><div><b>ครั้งต่อไปไม่ต้องใส่รหัส</b>กด ⋮ หรือ แชร์ → “เพิ่มไปยังหน้าจอหลัก” (Add to Home screen) หรือบุ๊กมาร์กหน้านี้ไว้</div><button onclick="LS.set(\'a2hs\',\'1\');this.parentNode.remove()">รับทราบ</button></div>':'')+
+  '<div class="mode" id="seg-mode"><button data-v="read"><span>บันทึกระดับ<small>Oil level</small></span></button><button data-v="act"><span>'+(ONE_ACT?'เติมน้ำมัน<small>Refill oil</small>':'บันทึกเหตุการณ์<small>Action · เติม/เปลี่ยน/รั่ว/ซ่อม</small>')+'</span></button></div>'+
+  '<div class="pend" id="pend"><span id="pend-t"></span><button onclick="flush(true)">ส่งตอนนี้</button></div>'+
+  '<div class="card"><div class="row"><div><label class="lbl" for="f-date">วันที่ของกะ<span>Date</span></label><input type="date" id="f-date" value="'+st.date+'" max="'+ymd(d)+'"></div><div><label class="lbl" for="f-time">เวลาที่ตรวจ<span>24 ชม.</span></label><input id="f-time" inputmode="numeric" maxlength="5" value="'+pad(d.getHours())+':'+pad(d.getMinutes())+'"></div></div>'+
+  '<div style="margin-top:10px"><span class="lbl">กะ<span>Shift</span></span><div class="seg" id="seg-shift"><button data-v="day">กะเช้า<small>'+BOOT.dayStart+'–'+BOOT.dayEnd+'</small></button><button data-v="night">กะดึก<small>'+BOOT.dayEnd+'–'+BOOT.dayStart+'</small></button></div></div></div>';
+  h+='<div id="m-read">';
+  SYS.forEach(function(s){h+='<div class="card sys" style="--c:var('+s[4]+')"><h2>'+s[1]+'<small>'+s[5]+'</small></h2><div class="row"><div><label class="lbl" for="f-'+s[2]+'">ระดับน้ำมัน<span>L</span></label><div class="unit"><input id="f-'+s[2]+'" inputmode="decimal" autocomplete="off"><i>L</i></div></div><div><label class="lbl" for="f-'+s[3]+'">อุณหภูมิ<span>°C</span></label><div class="unit"><input id="f-'+s[3]+'" inputmode="decimal" autocomplete="off"><i>°C</i></div></div></div></div>'});
+  h+='</div><div id="m-act" hidden><div class="card"'+(ONE_ACT?' hidden':'')+'><span class="lbl">เหตุการณ์<span>Action</span></span><div class="acts" id="seg-act">'+ACTS.map(function(a){return '<button type="button" data-v="'+a[0]+'" style="--ac:'+a[3]+'">'+a[4]+'<span>'+a[1]+'<small>'+a[2]+'</small></span></button>'}).join('')+'</div></div>'+
+  '<div class="card"><span class="lbl">ระบบ<span>System</span></span><div class="seg sys3" id="seg-rsys">'+SYS.map(function(s){return '<button data-v="'+s[0]+'">'+(s[0]==='servo'?'Servo':s[0]==='auxiliary'?'Auxiliary':'Lubrication')+'</button>'}).join('')+'</div><div class="oilname" id="oilname">เลือกระบบก่อน · Select a system</div></div>'+
+  '<div class="card c-tanks"><span class="lbl" id="lb-tanks">จำนวนถังที่เติม<span>Tanks</span></span><div class="stepper"><button type="button" onclick="stepT(-1)" aria-label="ลด">−</button><input id="f-tanks" inputmode="numeric" value="1" aria-label="จำนวนถัง"><button type="button" onclick="stepT(1)" aria-label="เพิ่ม">+</button></div><span class="tankunit">ถัง · tanks</span></div>'+
+  '<div class="card c-drained"><label class="lbl" for="f-drained">น้ำมันเก่าที่ถ่ายออก<span>Old oil drained</span></label><div class="unit"><input id="f-drained" inputmode="decimal" autocomplete="off"><i>L</i></div></div>'+
+  '<div class="card c-ba"><div class="row"><div><label class="lbl" for="f-before" id="lb-before">ก่อนเติม<span>Before</span></label><div class="unit"><input id="f-before" inputmode="decimal" autocomplete="off"><i>L</i></div></div><div><label class="lbl" for="f-after" id="lb-after">หลังเติม<span>After</span></label><div class="unit"><input id="f-after" inputmode="decimal" autocomplete="off"><i>L</i></div></div></div><div class="calc" id="leakamt" hidden></div></div>'+
+  '<div class="card c-leak"><label class="lbl" for="f-loc">จุดที่รั่ว<span>Location</span></label><input id="f-loc" maxlength="120" autocomplete="off" placeholder="เช่น ข้อต่อท่อ Pump No.2">'+
+  '<label class="lbl" for="f-cause" style="margin-top:10px">สาเหตุ (ถ้าทราบ)<span>Cause</span></label><input id="f-cause" maxlength="200" autocomplete="off">'+
+  '<label class="lbl" for="f-laction" style="margin-top:10px">การแก้ไขเบื้องต้น<span>Action taken</span></label><textarea id="f-laction" maxlength="200" placeholder="เช่น ขันข้อต่อ, เช็ดทำความสะอาด, แจ้ง MT" style="margin-top:0"></textarea></div>'+
+  '<div class="card c-maint"><label class="lbl" for="f-mloc">จุดที่ซ่อม/ตรวจ<span>Location</span></label><input id="f-mloc" maxlength="120" autocomplete="off">'+
+  '<label class="lbl" for="f-mwork" style="margin-top:10px">งานที่ทำ<span>Work done</span></label><textarea id="f-mwork" maxlength="200" placeholder="เช่น เปลี่ยนไส้กรอง, เปลี่ยนซีล" style="margin-top:0"></textarea></div>'+
+  '<div class="card c-reason"><span class="lbl" id="lb-reason">สาเหตุที่เติมเพิ่ม<span>Reason</span></span><div class="reasons" id="reasons"></div><textarea id="f-rtext" placeholder="พิมพ์สาเหตุ…" maxlength="200" hidden></textarea></div></div>';
+  h+='<div class="card"><label class="lbl" for="f-rec">ผู้บันทึก<span>Recorder</span></label><input id="f-rec" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="พิมพ์ตัวแรก เช่น O" value="'+esc((BOOT.recorders||[]).indexOf(LS.get('rec'))>=0?LS.get('rec'):'')+'" style="text-transform:uppercase;font-weight:800;letter-spacing:.5px"><div class="rec-chips" id="rec-chips"></div>'+
+  '<div style="margin-top:10px"><span class="lbl">ทีม<span>Team</span></span><div class="seg" id="seg-team"><button data-v="A">A</button><button data-v="B">B</button><button data-v="C">C</button></div></div>'+
+  '<div style="margin-top:10px" id="statuswrap"><span class="lbl">สถานะเครื่องจักร<span>Machine status</span></span><div class="seg st" id="seg-status"><button data-v="run">ใช้งาน</button><button data-v="stop">เครื่องจักรหยุด</button></div></div></div>'+
+  '<div class="card"><span class="lbl">ส่งล่าสุด<span>Recent</span></span><div class="recent" id="recent"><div><span>กำลังโหลด…</span></div></div></div>'+
+  '<div class="who"><span>ข้อมูลจะเข้าโปรแกรมบนคอมอัตโนมัติ · '+PAGE_VER+'</span><button onclick="logout()">เปลี่ยนรหัสทีม</button></div>';
+  document.getElementById('app').innerHTML=h;
+  document.body.insertAdjacentHTML('beforeend','<div class="bar" id="bar"><div class="in"><div class="err" id="err"></div><button class="btn" id="send" onclick="send()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>บันทึก · Save</button></div></div>');
+  segs();modeUI();recSetup();['f-before','f-after'].forEach(function(id){document.getElementById(id).addEventListener('input',leakCalc)});var t=document.getElementById('f-time');t.addEventListener('input',function(){var v=t.value.replace(/[^0-9]/g,'').slice(0,4);if(v.length>=3)v=v.slice(0,2)+':'+v.slice(2);t.value=v});
+  document.querySelectorAll('input,textarea,select').forEach(function(i){i.addEventListener(i.tagName==='SELECT'?'change':'input',function(){i.classList.remove('bad');showErr('')})});
+  document.getElementById('recent').addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-x]');if(b)takeBack(b.dataset.id,b.dataset.x==='edit')});
+  loadRecent();renderPend();flush(false)}
+function segs(){[['seg-shift','shift'],['seg-team','team'],['seg-status','status'],['seg-mode','mode'],['seg-act','act'],['seg-rsys','rsys'],['reasons','reason']].forEach(function(p){var g=document.getElementById(p[0]);if(!g)return;[].forEach.call(g.children,function(b){b.setAttribute('aria-pressed',String(st[p[1]]===b.dataset.v));b.onclick=function(){st[p[1]]=b.dataset.v;if(p[1]==='team')LS.set('team',b.dataset.v);segs();if(p[1]==='mode'||p[1]==='act'||p[1]==='rsys'||p[1]==='reason')modeUI(p[1])}})})}
+function actOf(){return ACTS.filter(function(a){return a[0]===st.act})[0]}
+function modeUI(changed){var ac=st.mode==='act';document.getElementById('m-read').hidden=ac;document.getElementById('m-act').hidden=!ac;document.getElementById('statuswrap').hidden=ac;
+  var A=actOf(),t=st.act;document.getElementById('ttl').textContent=ac?actTitle(A):'บันทึกระดับน้ำมัน';
+  var b=document.getElementById('send');if(b){b.className='btn'+(ac?' act':'');b.style.setProperty('--ac',ac?A[3]:'');b.innerHTML=sendLabel()}
+  var show=function(cls,on){[].forEach.call(document.querySelectorAll(cls),function(x){x.hidden=!on})};
+  show('.c-tanks',t==='refill'||t==='oil_change');show('.c-drained',t==='oil_change');show('.c-ba',t!=='maint');show('.c-leak',t==='leak');show('.c-maint',t==='maint');show('.c-reason',t==='refill'||t==='oil_change');
+  document.getElementById('lb-tanks').innerHTML=t==='oil_change'?'จำนวนถังน้ำมันใหม่<span>New oil tanks</span>':'จำนวนถังที่เติม<span>Tanks</span>';
+  document.getElementById('lb-before').innerHTML=t==='leak'?'ก่อนพบรั่ว<span>Before</span>':t==='oil_change'?'ก่อนเปลี่ยน<span>Before</span>':'ก่อนเติม<span>Before</span>';
+  document.getElementById('lb-after').innerHTML=t==='leak'?'ปัจจุบัน<span>Now</span>':t==='oil_change'?'หลังเปลี่ยน<span>After</span>':'หลังเติม<span>After</span>';
+  document.getElementById('lb-reason').innerHTML=t==='oil_change'?'สาเหตุที่เปลี่ยน<span>Reason</span>':'สาเหตุที่เติมเพิ่ม<span>Reason</span>';
+  var rs=REASONS[t]||[],box=document.getElementById('reasons');
+  if(box.dataset.t!==t){box.dataset.t=t;if(changed==='act')st.reason='';box.innerHTML=rs.map(function(r){return '<button type="button" data-v="'+r[0]+'"><i></i><span>'+r[1]+'</span></button>'}).join('');segs()}
+  var s=SYS.filter(function(x){return x[0]===st.rsys})[0];document.getElementById('oilname').innerHTML=s?'น้ำมัน · Oil: <b>'+esc(s[5])+'</b>':'เลือกระบบก่อน · Select a system';
+  var tx=document.getElementById('f-rtext');tx.hidden=st.reason!=='other';if(changed==='reason'&&st.reason==='other')tx.focus();leakCalc();showErr('')}
+function leakCalc(){var el=document.getElementById('leakamt');if(!el)return;var B=+val('f-before'),A=+val('f-after');var on=st.act==='leak'&&val('f-before')!==''&&val('f-after')!==''&&B>A;el.hidden=!on;if(on)el.innerHTML='น้ำมันหายไปประมาณ <b>'+(Math.round((B-A)*10)/10)+' L</b>'}
+function sendLabel(){return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'+(st.mode==='act'?actBtn(actOf()):'บันทึก · Save')}
+function stepT(d){var i=document.getElementById('f-tanks');var v=Math.max(1,Math.min(50,(parseInt(i.value,10)||0)+d));i.value=v;st.tanks=v;i.classList.remove('bad')}
+/* recorder: type the first letter(s) → the name is completed and matching names are offered */
+function recChips(){var i=document.getElementById('f-rec'),box=document.getElementById('rec-chips');if(!i||!box)return;var q=i.value.toUpperCase().slice(0,i.selectionStart==null?i.value.length:i.selectionStart),all=BOOT.recorders||[];
+  var pre=all.filter(function(n){return n.indexOf(q)===0}),m=!q?all:pre.length?pre:all.filter(function(n){return n.indexOf(q)>0});var cur=i.value.toUpperCase();
+  box.innerHTML=m.map(function(n){return '<button type="button" data-n="'+esc(n)+'"'+(n===cur?' aria-pressed="true"':'')+'><b>'+esc(n.slice(0,n.indexOf(q)===0?q.length:0))+'</b>'+esc(n.slice(n.indexOf(q)===0?q.length:0))+'</button>'}).join('')||'<span>ไม่มีชื่อนี้ในรายชื่อ</span>'}
+function recSetup(){var i=document.getElementById('f-rec'),box=document.getElementById('rec-chips');if(!i)return;
+  i.addEventListener('input',function(e){var v=i.value.toUpperCase().replace(/\s+/g,'');i.value=v;
+    if(e.inputType&&e.inputType.indexOf('insert')===0&&v){var hit=(BOOT.recorders||[]).filter(function(n){return n.indexOf(v)===0})[0];if(hit&&hit!==v){i.value=hit;try{i.setSelectionRange(v.length,hit.length)}catch(_){}}}
+    recChips()});
+  i.addEventListener('focus',function(){try{i.select()}catch(_){}recChips()});
+  i.addEventListener('blur',function(){var v=i.value.toUpperCase(),all=BOOT.recorders||[];if(v&&all.indexOf(v)<0){var hit=all.filter(function(n){return n.indexOf(v)===0});if(hit.length===1)i.value=hit[0]}setTimeout(recChips,0)});
+  box.addEventListener('mousedown',function(e){e.preventDefault()});
+  box.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('button');if(!b)return;i.value=b.dataset.n;i.classList.remove('bad');showErr('');recChips()});
+  recChips()}
+/* phone check page (…/exec?check=1): tells at a glance whether this phone can use the form */
+function checkPage(){var ua=String(navigator.userAgent||''),rows=[],bad=0;
+  var inApp=/Line\/|FBAN|FBAV|Instagram|; wv\)/i.test(ua),old=!('Promise' in window)||!('fetch' in window);
+  var lsOk=false;try{localStorage.setItem('hrmMob_t','1');lsOk=localStorage.getItem('hrmMob_t')==='1';localStorage.removeItem('hrmMob_t')}catch(e){lsOk=false}
+  var add=function(id,name,state,text){rows.push('<div class="ck" id="ck-'+id+'"><i class="'+state+'"></i><div><b>'+name+'</b><span>'+text+'</span></div></div>');if(state==='bad')bad++};
+  add('js','หน้าเว็บทำงาน','ok','สคริปต์ของหน้าโหลดได้ · '+esc(PAGE_VER));
+  add('net','อินเทอร์เน็ต',navigator.onLine===false?'bad':'ok',navigator.onLine===false?'ไม่มีสัญญาณ เปิดเน็ตมือถือแล้วลองใหม่':'เชื่อมต่ออยู่');
+  add('srv','เชื่อมต่อระบบ (Google Sheet)','wait','กำลังตรวจ…');
+  add('br','เบราว์เซอร์',inApp?'warn':(old?'bad':'ok'),inApp?'เปิดอยู่ในแอป (LINE/Facebook) ถ้าใช้ไม่ได้ ให้กด ⋮ → เปิดในเบราว์เซอร์':(old?'เบราว์เซอร์เก่ามาก ให้อัปเดต Chrome หรือ Safari':'ใช้งานได้'));
+  add('ls','จำรหัส/คิวรอส่งในเครื่อง',lsOk?'ok':'warn',lsOk?'ใช้ได้':'เครื่องไม่ให้เก็บข้อมูล (โหมดส่วนตัว?) ใช้ได้แต่ต้องเปิดจากลิงก์ที่มีรหัส และถ้าไม่มีสัญญาณจะเก็บรอส่งไม่ได้');
+  add('code','รหัสทีมในเครื่อง',getCode()?'ok':'warn',getCode()?'มีแล้ว ไม่ต้องใส่ซ้ำ':'ยังไม่มี จะถูกถามรหัสครั้งแรก');
+  document.getElementById('app').innerHTML='<div class="top"><div class="logo">'+drop()+'</div><div><h1>เช็กมือถือ</h1><small>'+esc(BOOT.machine)+' · Phone check</small></div></div>'+
+    '<div class="card" id="ck-sum"><b>กำลังตรวจ…</b></div><div class="card ckl">'+rows.join('')+'</div>'+
+    '<div class="card"><span class="lbl">ข้อมูลเครื่อง<span>Device</span></span><div class="ua">'+esc(ua)+'</div></div>'+
+    (BOOT.url?'<a class="btn" href="'+esc(BOOT.url)+'" target="_top" style="text-decoration:none">ไปหน้าบันทึก · Open form</a>':'');
+  var t0=Date.now(),done=function(state,text){var el=document.getElementById('ck-srv');el.querySelector('i').className=state;el.querySelector('span').innerHTML=text;if(state==='bad')bad++;
+    document.getElementById('ck-sum').innerHTML=bad?'<b class="no">เครื่องนี้ยังใช้งานไม่ได้</b><span>แก้ตามข้อที่เป็นสีแดง หรือแคปหน้าจอนี้ส่งผู้ดูแล</span>':'<b class="yes">เครื่องนี้ใช้งานได้</b><span>กด "ไปหน้าบันทึก" ได้เลย</span>'};
+  call('phoneCheck',[]).then(function(r){done(r&&r.ok?'ok':'bad',r&&r.ok?'ตอบกลับใน '+(Date.now()-t0)+' ms · ระบบ '+esc(r.version||'')+(r.version&&r.version!==PAGE_VER?' (หน้าเว็บ '+esc(PAGE_VER)+' — Deploy ไม่ตรงกัน)':''):'ระบบตอบกลับผิดปกติ')},function(e){done('bad','ติดต่อระบบไม่ได้: '+esc((e&&e.message)||e))})}
+function showErr(m){var e=document.getElementById('err');if(!e)return;e.textContent=m;e.style.display=m?'block':'none'}
+function val(id){var el=document.getElementById(id);return el?el.value.trim().replace(/,/g,''):''}
+['input','change'].forEach(function(t){document.addEventListener(t,function(e){if(e.target&&e.target.classList)e.target.classList.remove('bad')},true)});
+function send(){showErr('');[].forEach.call(document.querySelectorAll('.bad'),function(x){x.classList.remove('bad')});if(st.mode==='act')return sendAct();var rec=val('f-rec').toUpperCase(),time=val('f-time'),date=document.getElementById('f-date').value;
+  var r={id:uid(),shiftDate:date,shift:st.shift,time:time,recorder:rec,team:st.team,status:st.status,replaces:st.replaces||'',device:(navigator.userAgent||'').slice(0,80)};var any=false;
+  for(var i=0;i<SYS.length;i++){var s=SYS[i],L=val('f-'+s[2]),T=val('f-'+s[3]);r[s[2]]=L;r[s[3]]=T;
+    if(L!==''){if(isNaN(+L)||+L<0||+L>20000)return bad('f-'+s[2],ERR.bad_level);any=true}else if(T!=='')return bad('f-'+s[2],ERR.temp_without_level);
+    if(T!==''&&(isNaN(+T)||+T<-20||+T>200))return bad('f-'+s[3],ERR.bad_temp)}
+  if(!any)return bad('f-servoL',ERR.no_values);
+  var m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);if(!m)return bad('f-time',ERR.bad_time);var mins=+m[1]*60+ +m[2],ds=hm(BOOT.dayStart),de=hm(BOOT.dayEnd);
+  if(st.shift==='day'?!(mins>=ds&&mins<de):!(mins>=de||mins<ds))return bad('f-time',ERR.time_shift);
+  if(!rec)return bad('f-rec',ERR.no_recorder);if((BOOT.recorders||[]).indexOf(rec)<0)return bad('f-rec',ERR.bad_recorder+': '+(BOOT.recorders||[]).join(', '));if(!st.team){showErr(ERR.bad_team);return}
+  LS.set('rec',rec);var q=queue();q.push(r);saveQ(q);st.replaces='';clearVals();renderPend();
+  var b=document.getElementById('send');b.disabled=true;b.textContent='กำลังส่ง…';
+  flush(true).then(function(okN){b.disabled=false;b.innerHTML=sendLabel();var sum=SYS.filter(function(s){return r[s[2]]!==''}).map(function(s){return s[0]==='servo'?'Servo '+r.servoL:(s[0]==='auxiliary'?'Aux '+r.auxL:'Lube '+r.lubL)}).join(' · ');
+    if(queue().some(function(x){return x.id===r.id}))pop('เก็บไว้ในเครื่องแล้ว','ยังส่งไม่ได้ (ไม่มีสัญญาณ) ระบบจะส่งให้อัตโนมัติเมื่อมีเน็ต<br>'+esc(thDate(r.shiftDate))+' '+(r.shift==='day'?'กะเช้า':'กะดึก')+' '+r.time);
+    else pop('ส่งข้อมูลเรียบร้อย',esc(thDate(r.shiftDate))+' · '+(r.shift==='day'?'กะเช้า':'กะดึก')+' '+r.time+' · Team '+r.team+'<br>'+esc(sum)+' L')})}
+function checkTime(time){var m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);if(!m)return 'bad_time';var mins=+m[1]*60+ +m[2],ds=hm(BOOT.dayStart),de=hm(BOOT.dayEnd);
+  if(st.shift==='day'?!(mins>=ds&&mins<de):!(mins>=de||mins<ds))return 'time_shift';return ''}
+function sendAct(){var rec=val('f-rec').toUpperCase(),time=val('f-time'),date=document.getElementById('f-date').value,t=st.act,A=actOf();
+  if(!st.rsys){showErr(ERR.bad_system);document.getElementById('seg-rsys').scrollIntoView({block:'center'});return}
+  var e={kind:'event',type:t,id:uid(),shiftDate:date,shift:st.shift,time:time,recorder:rec,team:st.team,system:st.rsys,replaces:st.replaces||'',device:(navigator.userAgent||'').slice(0,80)};
+  var lvl=function(id){var v=val(id);return v===''||isNaN(+v)||+v<0||+v>20000?null:v};
+  if(t==='refill'||t==='oil_change'){var k=parseInt(val('f-tanks'),10);if(!(k>=1&&k<=50))return bad('f-tanks',ERR.bad_tanks);e.tanks=k}
+  if(t==='oil_change'){var dr=lvl('f-drained');if(dr==null)return bad('f-drained',ERR.bad_drained);e.drainedL=dr}
+  if(t!=='maint'){var B=val('f-before'),Af=val('f-after');if(lvl('f-before')==null)return bad('f-before',B===''?ERR.no_before_after:ERR.bad_level);if(lvl('f-after')==null)return bad('f-after',Af===''?ERR.no_before_after:ERR.bad_level);
+    if(t==='refill'&&+Af<=+B)return bad('f-after',ERR.after_not_higher);if(t==='leak'&&+Af>=+B)return bad('f-after',ERR.leak_not_lower);e.beforeL=B;e.afterL=Af}
+  if(t==='leak'){e.location=val('f-loc');if(!e.location)return bad('f-loc',ERR.no_location);e.cause=val('f-cause');e.action=val('f-laction')}
+  if(t==='maint'){e.location=val('f-mloc');e.action=val('f-mwork');if(!e.action)return bad('f-mwork',ERR.no_action)}
+  if(t==='refill'||t==='oil_change'){if(!st.reason){showErr(ERR.bad_reason);document.getElementById('reasons').scrollIntoView({block:'center'});return}
+    var rt=val('f-rtext');if(st.reason==='other'&&!rt)return bad('f-rtext',ERR.no_reason_text);e.reason=st.reason;e.reasonText=st.reason==='other'?rt:''}
+  var te=checkTime(time);if(te)return bad('f-time',ERR[te]);
+  if(!rec)return bad('f-rec',ERR.no_recorder);if((BOOT.recorders||[]).indexOf(rec)<0)return bad('f-rec',ERR.bad_recorder+': '+(BOOT.recorders||[]).join(', '));if(!st.team){showErr(ERR.bad_team);return}
+  LS.set('rec',rec);var q=queue();q.push(e);saveQ(q);st.replaces='';renderPend();
+  var sysName=SYS.filter(function(x){return x[0]===e.system})[0][1];
+  ['f-before','f-after','f-rtext','f-drained','f-loc','f-cause','f-laction','f-mloc','f-mwork'].forEach(function(id){var x=document.getElementById(id);if(x)x.value=''});document.getElementById('f-tanks').value='1';st.tanks=1;st.reason='';segs();modeUI();
+  var b=document.getElementById('send');b.disabled=true;b.textContent='กำลังส่ง…';
+  flush(true).then(function(){b.disabled=false;b.innerHTML=sendLabel();
+    var info=esc(thDate(e.shiftDate))+' · '+(e.shift==='day'?'กะเช้า':'กะดึก')+' '+e.time+' · Team '+e.team+'<br><b>'+esc(A[1])+' · '+esc(sysName)+'</b><br>'+esc(evSummary(e));
+    if(queue().some(function(x){return x.id===e.id}))pop('เก็บไว้ในเครื่องแล้ว','ยังส่งไม่ได้ (ไม่มีสัญญาณ) ระบบจะส่งให้อัตโนมัติเมื่อมีเน็ต<br>'+info);else pop(actDone(A),info)})}
+function evSummary(e){var why=function(){var r=(REASONS[e.type]||[]).filter(function(x){return x[0]===e.reason})[0];return r?r[1]+(e.reasonText?': '+e.reasonText:''):''};
+  if(e.type==='refill')return '+'+e.tanks+' ถัง · '+e.beforeL+' → '+e.afterL+' L · '+why();
+  if(e.type==='oil_change')return 'ถ่ายออก '+e.drainedL+' L · ใหม่ '+e.tanks+' ถัง · '+e.beforeL+' → '+e.afterL+' L · '+why();
+  if(e.type==='leak')return e.location+' · '+e.beforeL+' → '+e.afterL+' L';
+  return (e.location?e.location+' · ':'')+e.action}
+function bad(id,msg){var el=document.getElementById(id);if(el){el.classList.add('bad');el.focus()}showErr(msg);return false}
+function clearVals(){SYS.forEach(function(s){document.getElementById('f-'+s[2]).value='';document.getElementById('f-'+s[3]).value=''})}
+function queue(){try{return JSON.parse(LS.get('queue')||'[]')}catch(e){return []}}
+function saveQ(q){LS.set('queue',JSON.stringify(q))}
+function renderPend(){var p=document.getElementById('pend');if(!p)return;var n=queue().length;p.style.display=n?'flex':'none';document.getElementById('pend-t').textContent='รอส่ง '+n+' รายการ (ไม่มีสัญญาณ)'}
+var flushing=null;
+function flush(){if(flushing)return flushing;var code=getCode(),q=queue(),sent=0,stop=false;
+  /* plain promise chain (no async/await) so older phones can run the page */
+  var step=function(i){if(stop||i>=q.length)return Promise.resolve();
+    return call(q[i].kind==='event'||q[i].kind==='refill'?'submitEvent':'submitReading',[code,q[i]]).then(function(r){
+      if(r&&r.ok){sent++;rememberSent(q[i]);q[i]=null}else if(r&&r.error==='bad_code'){stop='code'}else if(r&&r.error){q[i]=null;showErr('ส่งไม่สำเร็จ: '+(ERR[r.error]||r.error))}
+      return step(i+1)},function(){stop=true})};
+  flushing=step(0).then(function(){if(stop==='code'){LS.del('code');BOOT.code='';gate('รหัสทีมถูกเปลี่ยน กรุณาใส่รหัสใหม่');flushing=null;return sent}
+    saveQ(q.filter(Boolean));renderPend();if(sent)loadRecent();flushing=null;return sent},function(e){flushing=null;reportErr('flush',e);return sent});return flushing}
+function loadRecent(){var box=document.getElementById('recent');if(!box)return;call('recent',[getCode()]).then(function(r){if(!r||!r.ok)return;box.innerHTML=r.rows.length?r.rows.map(function(x){if(x.kind==='log')return '<div class="lg"><b>'+esc(thDate(x.shiftDate))+' '+(x.shift==='day'?'เช้า':'ดึก')+' '+esc(x.time)+'</b><span><i>'+(x.action==='edit'?'แก้ไขแล้ว':'ยกเลิกแล้ว')+'</i> '+esc(x.summary)+'<br>โดย '+esc(x.by||x.recorder)+' · '+esc(String(x.at).slice(11,16))+'</span></div>';var sn={servo:'Servo',auxiliary:'Aux',lubrication:'Lube'}[x.system]||x.system,what=x.kind==='event'?(x.type==='refill'?'เติม '+sn+' +'+x.tanks+' ถัง':x.type==='oil_change'?'เปลี่ยนน้ำมัน '+sn+' '+x.tanks+' ถัง':x.type==='leak'?'รั่ว '+sn+' · '+x.location:'ซ่อม '+sn+' · '+x.action):[x.servoL&&'S '+x.servoL,x.auxL&&'A '+x.auxL,x.lubL&&'L '+x.lubL].filter(Boolean).join(' · ');var my=!x.imported&&mine(x.id);return '<div><b>'+esc(thDate(x.shiftDate))+' '+(x.shift==='day'?'เช้า':'ดึก')+' '+esc(x.time)+(my?'<em class="rx"><button data-x="edit" data-id="'+esc(x.id)+'">แก้ไข</button><button data-x="del" data-id="'+esc(x.id)+'">ยกเลิก</button></em>':'')+'</b><span>'+esc(what)+'<br>'+esc(x.recorder)+(x.imported?' · เข้าโปรแกรมแล้ว':' · รอโปรแกรมดึง')+'</span></div>'}).join(''):'<div><span>ยังไม่มีข้อมูล</span></div>'}).catch(function(){box.innerHTML='<div><span>ออฟไลน์</span></div>'})}
+/* take back / fix an entry this phone sent, until the PC program pulls it */
+function sentList(){try{return JSON.parse(LS.get('sent')||'[]')}catch(e){return []}}
+function rememberSent(x){var l=sentList().filter(function(y){return y.id!==x.id});l.unshift(x);LS.set('sent',JSON.stringify(l.slice(0,30)))}
+function forgetSent(id){LS.set('sent',JSON.stringify(sentList().filter(function(y){return y.id!==id})))}
+function mine(id){return sentList().filter(function(y){return y.id===id})[0]||null}
+function ask(title,desc,okText,cb){var el=document.getElementById('ask');if(el)el.remove();el=document.createElement('div');el.id='ask';el.className='pop';el.style.display='grid';
+  el.innerHTML='<div class="box"><h3>'+esc(title)+'</h3><p>'+desc+'</p><div class="ask-b"><button class="btn ghost" id="ask-no">ไม่ใช่ · No</button><button class="btn danger" id="ask-ok">'+esc(okText)+'</button></div></div>';
+  document.body.appendChild(el);document.getElementById('ask-no').onclick=function(){el.remove()};document.getElementById('ask-ok').onclick=function(){el.remove();cb()}}
+function takeBack(id,edit){var x=mine(id);if(!x)return;
+  ask(edit?'แก้ไขรายการนี้?':'ยกเลิกรายการนี้?',esc(thDate(x.shiftDate))+' · '+(x.shift==='day'?'กะเช้า':'กะดึก')+' '+esc(x.time)+'<br>'+(edit?'รายการเดิมจะถูกยกเลิก แล้วค่าจะถูกใส่กลับในฟอร์มให้แก้และบันทึกใหม่':'รายการจะถูกลบออก โปรแกรมบนคอมจะไม่ได้รับ'),edit?'แก้ไข · Edit':'ยกเลิกรายการ · Cancel',function(){
+    call('cancelEntry',[getCode(),id,edit?'edit':'cancel',val('f-rec')||x.recorder]).then(function(r){
+      if(r&&(r.ok||r.error==='not_found')){forgetSent(id);loadRecent();if(edit){fillFrom(x);pop('ใส่ค่าเดิมในฟอร์มแล้ว','แก้ไขค่าที่ผิด แล้วกดบันทึกอีกครั้ง')}else pop('ยกเลิกรายการแล้ว','โปรแกรมบนคอมจะไม่ได้รับรายการนี้');return}
+      if(r&&r.error==='already_imported'){loadRecent();pop('แก้ไขบนมือถือไม่ได้','โปรแกรมบนคอมดึงรายการนี้ไปแล้ว ให้แก้ไขที่คอม (ดับเบิลคลิกที่รายการในหน้าประวัติ)');return}
+      if(r&&r.error==='bad_code'){LS.del('code');BOOT.code='';gate('รหัสทีมถูกเปลี่ยน กรุณาใส่รหัสใหม่');return}
+      showErr('ทำรายการไม่สำเร็จ: '+((r&&r.error)||''))}).catch(function(){showErr('เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง')})})}
+function fillFrom(x){st.replaces=x.id;var set=function(id,v){var el=document.getElementById(id);if(el)el.value=v==null?'':v};
+  set('f-date',x.shiftDate);set('f-time',x.time);st.shift=x.shift;set('f-rec',x.recorder);recChips();if(x.team){st.team=x.team;LS.set('team',x.team)}
+  if(x.kind==='event'||x.kind==='refill'){st.mode='act';st.act=x.type||'refill';st.rsys=x.system;st.reason=x.reason||'';set('f-tanks',x.tanks||1);set('f-before',x.beforeL);set('f-after',x.afterL);set('f-rtext',x.reasonText);
+    set('f-drained',x.drainedL);set('f-loc',x.location);set('f-cause',x.cause);set('f-laction',x.action);set('f-mloc',x.location);set('f-mwork',x.action)}
+  else{st.mode='read';st.status=x.status||'run';SYS.forEach(function(s){set('f-'+s[2],x[s[2]]);set('f-'+s[3],x[s[3]])})}
+  segs();modeUI();var rb=document.getElementById('reasons');if(rb)segs();window.scrollTo(0,0)}
+function pop(t,d){document.getElementById('pop-t').textContent=t;document.getElementById('pop-d').innerHTML=d;document.getElementById('pop').style.display='grid'}
+function hidePop(){document.getElementById('pop').style.display='none'}
+function logout(){LS.del('code');BOOT.code='';if(BOOT.url){var a=document.createElement('a');a.href=BOOT.url;a.target='_top';document.body.appendChild(a);a.click();return}gate('')}
+window.addEventListener('online',function(){flush(false)});
+setInterval(function(){if(queue().length)flush(false)},30000);
+if(BOOT.check){checkPage()}else if(BOOT.codeErr){LS.del('code');gate('รหัสทีมไม่ถูกต้อง · Wrong code')}else{if(BOOT.code)LS.set('code',BOOT.code);if(getCode())form();else gate('')}
+</script>
+</body>
+</html>
