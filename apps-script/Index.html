@@ -119,7 +119,7 @@ function reportErr(where,e){var msg=String((e&&(e.message||e))||'error').slice(0
 window.onerror=function(m,src,line,col,err){reportErr('js:'+line+':'+col,err||m)};
 window.addEventListener&&window.addEventListener('unhandledrejection',function(e){reportErr('promise',e&&e.reason)});
 var BOOT=<?!= boot ?>;
-var PAGE_VER='v1.8.0';
+var PAGE_VER='v1.8.1';
 /* the team comes from the recorder's name (Settings → Members & teams on the PC) */
 function teamOf(n){var k=String(n||'').toUpperCase(),l=BOOT.members||[];for(var i=0;i<l.length;i++)if(l[i].name===k)return l[i].team||'';return ''}
 function teamShow(){var t=teamOf(document.getElementById('f-rec')?document.getElementById('f-rec').value:''),el=document.getElementById('team-badge');st.team=t;if(el){el.textContent=t?'ทีม '+t+' · Team '+t:'ทีมจะขึ้นเองตามชื่อ';el.className='team-badge'+(t?' on':'')}}
@@ -241,7 +241,7 @@ function checkPage(){var ua=String(navigator.userAgent||''),rows=[],bad=0;
     (BOOT.url?'<a class="btn" href="'+esc(BOOT.url)+'" target="_top" style="text-decoration:none">ไปหน้าบันทึก · Open form</a>':'');
   var t0=Date.now(),done=function(state,text){var el=document.getElementById('ck-srv');el.querySelector('i').className=state;el.querySelector('span').innerHTML=text;if(state==='bad')bad++;
     document.getElementById('ck-sum').innerHTML=bad?'<b class="no">เครื่องนี้ยังใช้งานไม่ได้</b><span>แก้ตามข้อที่เป็นสีแดง หรือแคปหน้าจอนี้ส่งผู้ดูแล</span>':'<b class="yes">เครื่องนี้ใช้งานได้</b><span>กด "ไปหน้าบันทึก" ได้เลย</span>'};
-  call('phoneCheck',[]).then(function(r){done(r&&r.ok?'ok':'bad',r&&r.ok?'ตอบกลับใน '+(Date.now()-t0)+' ms · ระบบ '+esc(r.version||'')+(r.version&&r.version!==PAGE_VER?' (หน้าเว็บ '+esc(PAGE_VER)+' — Deploy ไม่ตรงกัน)':''):'ระบบตอบกลับผิดปกติ')},function(e){done('bad','ติดต่อระบบไม่ได้: '+esc((e&&e.message)||e))})}
+  call('phoneCheck',[]).then(function(r){done(r&&r.ok?'ok':'bad',r&&r.ok?'ตอบกลับใน '+(Date.now()-t0)+' ms · ระบบ '+esc(r.version||'')+(r.version&&String(r.version).split('.').slice(0,2).join('.')!==PAGE_VER.split('.').slice(0,2).join('.')?' (หน้าเว็บ '+esc(PAGE_VER)+' — Deploy ไม่ตรงกัน)':''):'ระบบตอบกลับผิดปกติ')},function(e){done('bad','ติดต่อระบบไม่ได้: '+esc((e&&e.message)||e))})}
 function showErr(m){var e=document.getElementById('err');if(!e)return;e.textContent=m;e.style.display=m?'block':'none'}
 function val(id){var el=document.getElementById(id);return el?el.value.trim().replace(/,/g,''):''}
 ['input','change'].forEach(function(t){document.addEventListener(t,function(e){if(e.target&&e.target.classList)e.target.classList.remove('bad')},true)});
