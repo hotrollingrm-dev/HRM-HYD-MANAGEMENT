@@ -22,7 +22,7 @@ $shell = New-Object -ComObject WScript.Shell
 if ($exe) {
   $lnk = $shell.CreateShortcut((Join-Path $desktop "$name.lnk"))
   $lnk.TargetPath  = $exe
-  $lnk.Arguments   = "--app=$url"
+  $lnk.Arguments   = "--app=$url --start-maximized"
   $lnk.Description = 'HRM Hydraulic Management (web)'
   if (Test-Path $ico) { $lnk.IconLocation = "$ico,0" }
   $lnk.Save()
