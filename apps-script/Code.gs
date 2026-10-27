@@ -138,7 +138,116 @@ function doPost(e) {   // desktop may also use POST {action,key,ids}
   let p = {};
   try { p = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (err) { p = {}; }
   if (p.action === 'phone') return json_(phoneApi_(p));
+  if (p.action === 'desk') return json_(deskApi_(p));
   return json_(api_(p));
+}
+
+/* ======================================================================
+ * PC web app (desk/ on GitHub Pages): the whole program data lives here
+ *  - sheet "DB"        : the data file (JSON) split into cells of 40,000 characters
+ *  - sheet "DB_Backup" : first copy of every day (last 14 days)
+ *  - sheets "Records" / "PC_Events" : readable copy for people (refreshed at most every 15 minutes)
+ * Every call needs SYNC_KEY. Saves use a revision number: a PC that saved over an older copy gets the newer one back to merge.
+ * ====================================================================== */
+const DB = 'DB', DB_BK = 'DB_Backup', DB_CHUNK = 40000, DB_KEEP_DAYS = 14;
+function deskApi_(p) {
+  const c = cfg_();
+  if (!p.key || p.key !== c.SYNC_KEY) return { ok: false, error: 'bad_key' };
+  const fn = { info: deskInfo_, load: deskLoad_, save: deskSave_, rev: deskRev_ }[String(p.fn || '')];
+  if (!fn) return { ok: false, error: 'unknown_fn' };
+  try { return fn(p); } catch (err) { return { ok: false, error: 'server_error', detail: String(err && err.message || err).slice(0, 200) }; }
+}
+function dbProps_() { return PropertiesService.getScriptProperties(); }
+function dbMeta_() {
+  const pr = dbProps_();
+  return { rev: Number(pr.getProperty('DB_REV') || 0), at: pr.getProperty('DB_AT') || '', by: pr.getProperty('DB_BY') || '', parts: Number(pr.getProperty('DB_PARTS') || 0) };
+}
+function dbSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(DB);
+  if (!sh) { sh = ss.insertSheet(DB); try { sh.hideSheet(); } catch (e) {} }
+  return sh;
+}
+function dbRead_() {
+  const m = dbMeta_();
+  if (!m.parts) return '';
+  return dbSheet_().getRange(1, 1, m.parts, 1).getValues().map(r => String(r[0])).join('');
+}
+function dbWrite_(text) {
+  const sh = dbSheet_(), parts = [];
+  for (let i = 0; i < text.length; i += DB_CHUNK) parts.push([text.slice(i, i + DB_CHUNK)]);
+  if (!parts.length) parts.push(['']);
+  sh.getRange(1, 1, parts.length, 1).setNumberFormat('@').setValues(parts);
+  const old = Number(dbProps_().getProperty('DB_PARTS') || 0);
+  if (old > parts.length) sh.getRange(parts.length + 1, 1, old - parts.length, 1).clearContent();
+  return parts.length;
+}
+function deskInfo_() {
+  const m = dbMeta_(), ss = SpreadsheetApp.getActiveSpreadsheet();
+  return { ok: true, exists: m.parts > 0, rev: m.rev, modified: m.at, savedBy: m.by, sheet: ss.getName(), url: ss.getUrl() };
+}
+function deskRev_() { const m = dbMeta_(); return { ok: true, rev: m.rev, exists: m.parts > 0 }; }
+function deskLoad_() {
+  const m = dbMeta_();
+  if (!m.parts) return { ok: true, exists: false, rev: 0, text: null };
+  return { ok: true, exists: true, rev: m.rev, text: dbRead_() };
+}
+function deskSave_(p) {
+  const text = String(p.payload || '');
+  let obj;
+  try { obj = JSON.parse(text); } catch (e) { return { ok: false, error: 'bad_json' }; }
+  if (!obj || !Array.isArray(obj.records) || !Array.isArray(obj.events)) return { ok: false, error: 'bad_data' };
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) return { ok: false, busy: true, error: 'locked' };
+  try {
+    const m = dbMeta_();
+    if (m.parts && Number(p.base_rev || 0) !== m.rev) return { ok: false, conflict: true, rev: m.rev, text: dbRead_() };
+    const now = new Date(), tz = Session.getScriptTimeZone(), at = Utilities.formatDate(now, tz, 'yyyy-MM-dd HH:mm:ss');
+    if (m.parts) dbDailyBackup_(m, Utilities.formatDate(now, tz, 'yyyy-MM-dd'));
+    obj.rev = m.rev + 1; obj.savedBy = String(p.by || 'PC').slice(0, 40); obj.savedAt = at;
+    const parts = dbWrite_(JSON.stringify(obj));
+    dbProps_().setProperties({ DB_REV: String(obj.rev), DB_AT: at, DB_BY: obj.savedBy, DB_PARTS: String(parts) });
+    try { dbMirror_(obj, false); } catch (e) { /* readable copy is a convenience only */ }
+    return { ok: true, rev: obj.rev, savedBy: obj.savedBy, savedAt: at };
+  } finally { lock.releaseLock(); }
+}
+/* first save of each day keeps a full copy of the previous data */
+function dbDailyBackup_(m, day) {
+  const pr = dbProps_();
+  if (pr.getProperty('DB_BK_DAY') === day) return;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let bk = ss.getSheetByName(DB_BK);
+  if (!bk) { bk = ss.insertSheet(DB_BK); bk.appendRow(['day', 'rev', 'savedAt', 'savedBy', 'part', 'data']); bk.setFrozenRows(1); try { bk.hideSheet(); } catch (e) {} }
+  const text = dbRead_(), rows = [];
+  for (let i = 0, k = 0; i < text.length; i += DB_CHUNK, k++) rows.push([day, m.rev, m.at, m.by, k, text.slice(i, i + DB_CHUNK)]);
+  if (rows.length) bk.getRange(bk.getLastRow() + 1, 1, rows.length, 6).setValues(rows);
+  const cut = Utilities.formatDate(new Date(Date.now() - DB_KEEP_DAYS * 86400000), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const n = bk.getLastRow() - 1;
+  if (n > 0) {
+    const days = bk.getRange(2, 1, n, 1).getDisplayValues();
+    let old = 0; while (old < n && days[old][0] < cut) old++;
+    if (old) bk.deleteRows(2, old);
+  }
+  pr.setProperty('DB_BK_DAY', day);
+}
+/* readable copy for people (not used by the program) */
+function dbMirror_(obj, force) {
+  const pr = dbProps_(), last = Number(pr.getProperty('DB_MIRROR_AT') || 0);
+  if (!force && Date.now() - last < 15 * 60000) return;
+  const ss = SpreadsheetApp.getActiveSpreadsheet(), tz = Session.getScriptTimeZone();
+  const put = (name, head, rows) => {
+    let sh = ss.getSheetByName(name); if (!sh) sh = ss.insertSheet(name);
+    sh.clearContents(); sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold'); sh.setFrozenRows(1);
+    if (rows.length) sh.getRange(2, 1, rows.length, head.length).setValues(rows);
+  };
+  const d = ts => Utilities.formatDate(new Date(Number(ts)), tz, 'yyyy-MM-dd'), t = ts => Utilities.formatDate(new Date(Number(ts)), tz, 'HH:mm');
+  const recs = obj.records.filter(r => r && isFinite(Number(r.ts))).sort((a, b) => a.ts - b.ts)
+    .map(r => [d(r.ts), t(r.ts), r.shift || '', r.systemType || '', r.level, r.temperature == null ? '' : r.temperature, r.status || '', r.recorder || r.operator || '', r.team || '', r.source || (r.fromEvent ? 'event' : 'pc'), r.note || '']);
+  put('Records', ['date', 'time', 'shift', 'system', 'level L', 'temp °C', 'status', 'recorder', 'team', 'source', 'note'], recs);
+  const evs = obj.events.filter(e => e && isFinite(Number(e.ts))).sort((a, b) => a.ts - b.ts)
+    .map(e => [d(e.ts), t(e.ts), e.systemType || '', e.eventType || '', e.beforeLevel == null ? '' : e.beforeLevel, e.afterLevel == null ? '' : e.afterLevel, e.tankCount || '', e.addedVolume || '', e.totalCost || '', e.reason || '', e.otherDetail || e.cause || '', e.location || '', e.action || '', e.recorder || e.operator || '', e.source || 'pc']);
+  put('PC_Events', ['date', 'time', 'system', 'event', 'before L', 'after L', 'tanks', 'added L', 'cost THB', 'reason', 'detail / cause', 'location', 'action', 'recorder', 'source'], evs);
+  pr.setProperty('DB_MIRROR_AT', String(Date.now()));
 }
 
 /* phone page hosted outside Apps Script (e.g. GitHub Pages) calls the same functions through POST {action:'phone', fn, args} */
