@@ -57,8 +57,8 @@ function setup() {
       ['Setting', 'Value', 'คำอธิบาย / Note'],
       ['TEAM_CODE', code, 'รหัสทีม 6 หลักขึ้นไป ให้พนักงานกรอกครั้งแรกในมือถือ (เปลี่ยนได้ตลอด)'],
       ['SYNC_KEY', Utilities.getUuid(), 'กุญแจสำหรับโปรแกรมบนคอม ห้ามให้คนอื่น'],
-      ['DAY_START', '07:00', 'เวลาเริ่มกะเช้า'],
-      ['DAY_END', '19:00', 'เวลาเริ่มกะดึก'],
+      ['DAY_START', '08:00', 'เวลาเริ่มกะเช้า'],
+      ['DAY_END', '20:00', 'เวลาเริ่มกะดึก'],
       ['MACHINE', 'HRM Process', 'ชื่อที่แสดงบนหน้ามือถือ']
     ]);
     cfg.getRange('A1:C1').setFontWeight('bold').setBackground('#E4ECFD');
@@ -134,7 +134,7 @@ function doGet(e) {
   const pc = String(p.c || '').trim();
   let url = '';
   try { url = ScriptApp.getService().getUrl(); } catch (err) { url = ''; }
-  t.boot = JSON.stringify({ dayStart: c.DAY_START || '07:00', dayEnd: c.DAY_END || '19:00', machine: c.MACHINE || 'HRM Process', recorders: recorders_(c), members: members_(c),
+  t.boot = JSON.stringify({ dayStart: c.DAY_START || '08:00', dayEnd: c.DAY_END || '20:00', machine: c.MACHINE || 'HRM Process', recorders: recorders_(c), members: members_(c),
     url: url, code: pc && pc === c.TEAM_CODE ? pc : '', codeErr: pc && pc !== c.TEAM_CODE ? 'bad_code' : '', check: !!p.check });
   return t.evaluate().setTitle('HRM Hydraulic · บันทึกระดับน้ำมัน')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1')
@@ -145,6 +145,7 @@ function doPost(e) {   // desktop may also use POST {action,key,ids}
   try { p = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (err) { p = {}; }
   if (p.action === 'phone') return json_(phoneApi_(p));
   if (p.action === 'desk') return json_(deskApi_(p));
+  if (Array.isArray(p.events) && p.destination) return json_(lineHook_(p));   // LINE webhook
   return json_(api_(p));
 }
 
@@ -268,7 +269,7 @@ function phoneApi_(p) {
 /* settings the phone page needs; the recorder list only after the right team code */
 function phoneBoot(code) {
   const c = cfg_(), ok = !!code && String(code).trim() === c.TEAM_CODE;
-  return { ok: true, codeOk: ok, dayStart: c.DAY_START || '07:00', dayEnd: c.DAY_END || '19:00', machine: c.MACHINE || 'HRM Process',
+  return { ok: true, codeOk: ok, dayStart: c.DAY_START || '08:00', dayEnd: c.DAY_END || '20:00', machine: c.MACHINE || 'HRM Process',
     recorders: ok ? recorders_(c) : [], members: ok ? members_(c) : [], version: SERVER_VER };
 }
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
@@ -337,6 +338,7 @@ function api_(p) {
       return { ok: true, acked: k };
     } finally { lock.releaseLock(); }
   }
+  if (p.action === 'line') return lineApi_(p, c);
   if (p.action === 'names') {   // the PC program sends its recorder list
     const list = String(p.names || '').toUpperCase().split(/[\s,;]+/).filter(n => /^[A-Z0-9]{1,12}(:[ABC])?$/.test(n));
     if (!list.length) return { ok: false, error: 'bad_names' };
@@ -345,9 +347,175 @@ function api_(p) {
     let row = keys.indexOf('RECORDERS') + 1;
     if (!row) { row = cs.getLastRow() + 1; cs.getRange(row, 1).setValue('RECORDERS'); cs.getRange(row, 3).setValue('สมาชิก ชื่อ:ทีม (ส่งมาจากโปรแกรมบนคอม)'); }
     cs.getRange(row, 2).setNumberFormat('@').setValue(list.join(' '));
+    const hmOk = v => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || ''));
+    if (hmOk(p.dayStart) && hmOk(p.dayEnd) && hm_(p.dayStart) < hm_(p.dayEnd)) { setCfg_('DAY_START', p.dayStart, 'เวลาเริ่มกะเช้า'); setCfg_('DAY_END', p.dayEnd, 'เวลาเริ่มกะดึก'); }
+    if (p.rota != null && /^(\d{4}-\d{2}-\d{2}\|[ABC-]{2}(,[ABC-]{2}){0,59})?$/.test(String(p.rota))) setCfg_('ROTA', String(p.rota), 'ตารางหมุนกะ: วันเริ่มรอบ|เช้าดึก,… (ส่งมาจากโปรแกรมบนคอม)');
+    if (p.link != null && /^(https:\/\/[^\s"'<>]{8,300})?$/.test(String(p.link))) setCfg_('PHONE_LINK', String(p.link), 'ลิงก์หน้ามือถือ (แนบในข้อความแจ้งเตือน LINE)');
     return { ok: true, names: list };
   }
   return { ok: false, error: 'unknown_action' };
+}
+
+function setCfg_(key, val, note) {
+  const cs = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG);
+  const keys = cs.getRange(1, 1, Math.max(1, cs.getLastRow()), 1).getValues().map(r => String(r[0]).trim());
+  let row = keys.indexOf(key) + 1;
+  if (!row) { row = cs.getLastRow() + 1; cs.getRange(row, 1).setValue(key); if (note) cs.getRange(row, 3).setValue(note); }
+  cs.getRange(row, 2).setNumberFormat('@').setValue(String(val));
+}
+
+/* ======================================================================
+ * LINE group alert: before each shift ends, if a system has no reading yet,
+ * the LINE Official Account bot posts to the group, e.g.
+ *   "กะเช้า 28 ต.ค. · ทีม A ยังไม่ได้ลง: Servo, Lube"
+ *  - token / on-off / minutes before the end: set from the PC program (Settings → แจ้งเตือน LINE)
+ *  - group: found by itself when the bot is invited into the LINE group (webhook = this Web App link)
+ *  - timer: run setupLine() once in the editor (makes a 5-minute timer for lineTick)
+ * ====================================================================== */
+const LINE_API = 'https://api.line.me/v2/bot';
+const SYS_NAME = { servo: 'Servo', auxiliary: 'Aux', lubrication: 'Lube' };
+function lineProps_() { const p = PropertiesService.getScriptProperties(); return { token: p.getProperty('LINE_TOKEN') || '', group: p.getProperty('LINE_GROUP') || '', groupName: p.getProperty('LINE_GROUP_NAME') || '', on: p.getProperty('LINE_ON') === '1', before: Math.max(5, Math.min(120, Number(p.getProperty('LINE_BEFORE') || 15))), last: p.getProperty('LINE_LAST') || '', lastAt: p.getProperty('LINE_LAST_AT') || '', lastMsg: p.getProperty('LINE_LAST_MSG') || '', err: p.getProperty('LINE_ERR') || '' }; }
+function lineFetch_(path, method, body, token) {
+  const o = { method: method || 'get', muteHttpExceptions: true, headers: { Authorization: 'Bearer ' + token } };
+  if (body) { o.contentType = 'application/json'; o.payload = JSON.stringify(body); }
+  const r = UrlFetchApp.fetch(LINE_API + path, o);
+  let j = {}; try { j = JSON.parse(r.getContentText() || '{}'); } catch (e) { j = {}; }
+  return { code: r.getResponseCode(), body: j };
+}
+function linePush_(text) {
+  const L = lineProps_();
+  if (!L.token) return { ok: false, error: 'no_token' };
+  if (!L.group) return { ok: false, error: 'no_group' };
+  const r = lineFetch_('/message/push', 'post', { to: L.group, messages: [{ type: 'text', text: String(text).slice(0, 4900) }] }, L.token);
+  const pr = PropertiesService.getScriptProperties();
+  if (r.code !== 200) { const e = 'LINE ' + r.code + ': ' + (r.body.message || ''); pr.setProperty('LINE_ERR', e); return { ok: false, error: 'line_' + r.code, message: r.body.message || '' }; }
+  pr.setProperties({ LINE_ERR: '', LINE_LAST_AT: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss').slice(0, 16), LINE_LAST_MSG: String(text).slice(0, 300) });
+  return { ok: true };
+}
+/* rota "2026-10-27|AB,AB,CA" → team on a shift (A/B/C or '') */
+function rotaTeam_(c, shiftDate, shift) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})\|(.+)$/.exec(String(c.ROTA || ''));
+  if (!m) return '';
+  const days = m[4].split(','), d0 = Date.UTC(+m[1], +m[2] - 1, +m[3]), q = /^(\d{4})-(\d{2})-(\d{2})$/.exec(shiftDate);
+  if (!q || !days.length) return '';
+  const k = Math.round((Date.UTC(+q[1], +q[2] - 1, +q[3]) - d0) / 864e5), i = ((k % days.length) + days.length) % days.length;
+  const t = (days[i] || '--').charAt(shift === 'day' ? 0 : 1);
+  return t === '-' ? '' : t;
+}
+/* the shift running at `now`, its date and minutes left (Bangkok time from the script time zone) */
+function shiftNow_(c, now) {
+  const tz = Session.getScriptTimeZone(), f = d => Utilities.formatDate(d, tz, 'yyyy-MM-dd HH:mm:ss').slice(0, 16);
+  const t = f(now), today = t.slice(0, 10), mins = hm_(t.slice(11, 16)), ds = hm_(c.DAY_START || '08:00'), de = hm_(c.DAY_END || '20:00');
+  const yday = f(new Date(now.getTime() - 864e5)).slice(0, 10);
+  if (mins >= ds && mins < de) return { shift: 'day', shiftDate: today, left: de - mins };
+  if (mins >= de) return { shift: 'night', shiftDate: today, left: 1440 - mins + ds };
+  return { shift: 'night', shiftDate: yday, left: ds - mins };
+}
+/* which systems already have a reading in this shift (PC data in DB + phone rows in Inbox) */
+function shiftMissing_(shiftDate, shift) {
+  const have = {};
+  try {
+    const txt = dbRead_();
+    if (txt) { const o = JSON.parse(txt); (o.records || []).forEach(r => { if (r && !r.fromEvent && r.shiftDate === shiftDate && r.shift === shift && r.systemType) have[r.systemType] = 1; }); }
+  } catch (e) { /* DB not readable → phone rows only */ }
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(INBOX);
+  if (sh && sh.getLastRow() > 1) {
+    const iD = HEAD.indexOf('shiftDate'), iS = HEAD.indexOf('shift');
+    sh.getRange(2, 1, sh.getLastRow() - 1, HEAD.length).getDisplayValues().forEach(v => {
+      if (normDate_(v[iD]) !== shiftDate || v[iS] !== shift) return;
+      SYS.forEach(x => { if (String(v[HEAD.indexOf(x[1])]).trim() !== '') have[x[0]] = 1; });
+    });
+  }
+  return SYS.map(x => x[0]).filter(k => !have[k]);
+}
+function normDate_(v) {
+  const s = String(v || '').trim();
+  let m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s); if (m) return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
+  m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s); if (m) return m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+  return s;
+}
+const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+function thDay_(ymd) { const p = ymd.split('-'); return (+p[2]) + ' ' + TH_MON[+p[1] - 1] + ' ' + String(+p[0] + 543).slice(-2); }
+function alertText_(c, sn, miss) {
+  const team = rotaTeam_(c, sn.shiftDate, sn.shift), shName = sn.shift === 'day' ? 'กะเช้า' : 'กะดึก';
+  const range = sn.shift === 'day' ? (c.DAY_START || '08:00') + '–' + (c.DAY_END || '20:00') : (c.DAY_END || '20:00') + '–' + (c.DAY_START || '08:00');
+  const all = miss.length === SYS.length;
+  return '⚠️ แจ้งเตือนลงระดับน้ำมันไฮดรอลิก\n' + shName + ' ' + thDay_(sn.shiftDate) + ' (' + range + ')' + (team ? ' · ทีม ' + team : '') + '\n' +
+    (all ? (team ? 'ทีม ' + team + ' ' : '') + 'ยังไม่ได้ลงข้อมูลกะนี้เลย' : 'ยังไม่ได้ลง: ' + miss.map(k => SYS_NAME[k]).join(', ')) +
+    '\nเหลือเวลาอีก ' + sn.left + ' นาที ลงด้วยจ้า 🙏' + (c.PHONE_LINK ? '\n' + c.PHONE_LINK : '');
+}
+/* timer (every 5 minutes): post once per shift, inside the last N minutes */
+function lineTick(nowMs) {
+  const L = lineProps_();
+  if (!L.on || !L.token || !L.group) return { ok: true, skip: 'off' };
+  const c = cfg_(), sn = shiftNow_(c, nowMs ? new Date(nowMs) : new Date()), key = sn.shiftDate + '_' + sn.shift;
+  if (sn.left > L.before || L.last === key) return { ok: true, skip: 'not_now', shift: sn };
+  const miss = shiftMissing_(sn.shiftDate, sn.shift);
+  PropertiesService.getScriptProperties().setProperty('LINE_LAST', key);
+  if (!miss.length) return { ok: true, complete: true, shift: sn };
+  const r = linePush_(alertText_(c, sn, miss));
+  return { ok: r.ok, sent: r.ok, missing: miss, shift: sn, error: r.error };
+}
+/* run once from the editor: allows sending to LINE and makes the 5-minute timer */
+function setupLine() {
+  ScriptApp.getProjectTriggers().forEach(t => { if (t.getHandlerFunction() === 'lineTick') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('lineTick').timeBased().everyMinutes(5).create();
+  try { UrlFetchApp.fetch('https://api.line.me/v2/bot/info', { muteHttpExceptions: true }); } catch (e) { }
+  return 'OK — LINE timer is on (every 5 minutes)';
+}
+function lineTimerOn_() { try { return ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'lineTick'); } catch (e) { return null; } }
+/* PC program: {action:'line', key, fn: status|save|test|preview} */
+function lineApi_(p, c) {
+  const pr = PropertiesService.getScriptProperties();
+  if (p.fn === 'save') {
+    if (p.token != null && String(p.token).trim()) {
+      const tok = String(p.token).trim();
+      if (!/^[A-Za-z0-9+/=._-]{20,400}$/.test(tok)) return { ok: false, error: 'bad_token' };
+      const chk = lineFetch_('/info', 'get', null, tok);
+      if (chk.code !== 200) return { ok: false, error: 'token_refused', code: chk.code };
+      pr.setProperties({ LINE_TOKEN: tok, LINE_BOT: chk.body.displayName || '' });
+    }
+    if (p.clearGroup) { pr.setProperty('LINE_GROUP', ''); pr.setProperty('LINE_GROUP_NAME', ''); }
+    if (p.on != null) pr.setProperty('LINE_ON', p.on ? '1' : '0');
+    if (p.before != null && isFinite(Number(p.before))) pr.setProperty('LINE_BEFORE', String(Math.max(5, Math.min(120, Math.round(Number(p.before))))));
+  }
+  const L = lineProps_();
+  if (p.fn === 'test') {
+    const sn = shiftNow_(c, new Date());
+    const r = linePush_('✅ ทดสอบระบบแจ้งเตือน HRM Hydraulic\nบอทพร้อมแจ้งเตือนกลุ่มนี้แล้ว\nจะเตือนก่อนหมดกะ ' + L.before + ' นาที ถ้ายังลงระดับน้ำมันไม่ครบ\n(ตอนนี้ ' + (sn.shift === 'day' ? 'กะเช้า' : 'กะดึก') + (rotaTeam_(c, sn.shiftDate, sn.shift) ? ' ทีม ' + rotaTeam_(c, sn.shiftDate, sn.shift) : '') + ')');
+    if (!r.ok) return Object.assign({ ok: false }, r);
+  }
+  const out = { ok: true, hasToken: !!L.token, bot: pr.getProperty('LINE_BOT') || '', group: !!L.group, groupName: L.groupName, on: L.on, before: L.before, timer: lineTimerOn_(), lastAt: L.lastAt, lastMsg: L.lastMsg, err: L.err };
+  {
+    const sn = shiftNow_(c, new Date());
+    out.now = { shift: sn.shift, shiftDate: sn.shiftDate, left: sn.left, team: rotaTeam_(c, sn.shiftDate, sn.shift), missing: shiftMissing_(sn.shiftDate, sn.shift) };
+    out.now.text = out.now.missing.length ? alertText_(c, sn, out.now.missing) : '';
+  }
+  if (L.token) {
+    try { const q = lineFetch_('/message/quota', 'get', null, L.token), u = lineFetch_('/message/quota/consumption', 'get', null, L.token); if (q.code === 200) out.quota = { type: q.body.type, limit: q.body.value == null ? null : q.body.value, used: u.body.totalUsage == null ? null : u.body.totalUsage }; } catch (e) { }
+  }
+  return out;
+}
+/* LINE webhook (LINE posts here): remember the group when the bot joins; "เช็ค" in the group replies the shift status (replies are free) */
+function lineHook_(p) {
+  const L = lineProps_(), pr = PropertiesService.getScriptProperties();
+  (p.events || []).forEach(ev => {
+    const src = ev.source || {}, gid = src.groupId || '';
+    if (ev.type === 'join' && gid) {
+      pr.setProperty('LINE_GROUP', gid);
+      let name = ''; try { const g = lineFetch_('/group/' + gid + '/summary', 'get', null, L.token); name = (g.body && g.body.groupName) || ''; } catch (e) { }
+      pr.setProperty('LINE_GROUP_NAME', name);
+      if (ev.replyToken && L.token) lineFetch_('/message/reply', 'post', { replyToken: ev.replyToken, messages: [{ type: 'text', text: 'สวัสดีครับ 👋 บอทแจ้งเตือน HRM Hydraulic เชื่อมกับกลุ่มนี้แล้ว\nจะเตือนก่อนหมดกะถ้ายังลงระดับน้ำมันไม่ครบ\nพิมพ์ "เช็ค" เพื่อดูสถานะกะตอนนี้' }] }, L.token);
+    } else if (ev.type === 'leave' && gid && gid === L.group) {
+      pr.setProperty('LINE_GROUP', ''); pr.setProperty('LINE_GROUP_NAME', '');
+    } else if (ev.type === 'message' && ev.message && ev.message.type === 'text' && /^\s*(เช็ค|เช็ก|check|สถานะ)\s*$/i.test(ev.message.text || '') && ev.replyToken && L.token && (!L.group || gid === L.group)) {
+      const c = cfg_(), sn = shiftNow_(c, new Date()), miss = shiftMissing_(sn.shiftDate, sn.shift), team = rotaTeam_(c, sn.shiftDate, sn.shift);
+      const t = (sn.shift === 'day' ? 'กะเช้า ' : 'กะดึก ') + thDay_(sn.shiftDate) + (team ? ' · ทีม ' + team : '') + '\n' +
+        (miss.length ? 'ยังไม่ได้ลง: ' + miss.map(k => SYS_NAME[k]).join(', ') : '✅ ลงครบ 3 ระบบแล้ว') + '\nเหลือเวลา ' + Math.floor(sn.left / 60) + ' ชม. ' + (sn.left % 60) + ' นาที';
+      lineFetch_('/message/reply', 'post', { replyToken: ev.replyToken, messages: [{ type: 'text', text: t }] }, L.token);
+    }
+  });
+  return { ok: true };
 }
 
 /* ---------- called from the phone page (google.script.run) ---------- */
@@ -407,7 +575,7 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.7.3';
+const SERVER_VER = 'v1.8.0';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   return { ok: true, version: SERVER_VER, time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') };
@@ -508,7 +676,7 @@ function validate_(r, c) {
   if (r.shift !== 'day' && r.shift !== 'night') return 'bad_shift';
   const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(r.time || ''));
   if (!m) return 'bad_time';
-  const mins = +m[1] * 60 + +m[2], ds = hm_(c.DAY_START || '07:00'), de = hm_(c.DAY_END || '19:00');
+  const mins = +m[1] * 60 + +m[2], ds = hm_(c.DAY_START || '08:00'), de = hm_(c.DAY_END || '20:00');
   if (r.shift === 'day' ? !(mins >= ds && mins < de) : !(mins >= de || mins < ds)) return 'time_shift';
   if (!String(r.recorder || '').trim()) return 'no_recorder';
   if (recorders_(c).indexOf(String(r.recorder).trim().toUpperCase()) < 0) return 'bad_recorder';

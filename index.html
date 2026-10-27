@@ -122,8 +122,8 @@ function reportErr(where,e){var msg=String((e&&(e.message||e))||'error').slice(0
   try{if(_errSent<3&&typeof call==='function'){_errSent++;call('logClientError',[{where:where,msg:msg,ua:String(navigator.userAgent||'').slice(0,200),url:String(location.href||'').slice(0,100)}]).then(null,function(){})}}catch(_){}}
 window.onerror=function(m,src,line,col,err){reportErr('js:'+line+':'+col,err||m)};
 window.addEventListener&&window.addEventListener('unhandledrejection',function(e){reportErr('promise',e&&e.reason)});
-var BOOT={machine:'HRM Process',dayStart:'07:00',dayEnd:'19:00',recorders:[]};var CONF=window.HRM_CONFIG||{};
-var PAGE_VER='v1.7.3';
+var BOOT={machine:'HRM Process',dayStart:'08:00',dayEnd:'20:00',recorders:[],members:[]};var CONF=window.HRM_CONFIG||{};
+var PAGE_VER='v1.8.0';
 /* the team comes from the recorder's name (Settings → Members & teams on the PC) */
 function teamOf(n){var k=String(n||'').toUpperCase(),l=BOOT.members||[];for(var i=0;i<l.length;i++)if(l[i].name===k)return l[i].team||'';return ''}
 function teamShow(){var t=teamOf(document.getElementById('f-rec')?document.getElementById('f-rec').value:''),el=document.getElementById('team-badge');st.team=t;if(el){el.textContent=t?'ทีม '+t+' · Team '+t:'ทีมจะขึ้นเองตามชื่อ';el.className='team-badge'+(t?' on':'')}}
