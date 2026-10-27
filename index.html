@@ -28,6 +28,7 @@ select.bad{border-color:var(--bad);background-color:#FDF0F0}
 input:focus,select:focus{border-color:var(--pri);box-shadow:0 0 0 4px var(--pri-s)}
 input.bad{border-color:var(--bad);background:#FDF0F0}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:4px;border-radius:15px;background:#EEF1F6}
+.team-badge{margin-top:10px;padding:9px 12px;border-radius:12px;background:var(--bg2,#eef2f8);color:var(--fg2);font-size:14px;font-weight:600}.team-badge.on{color:var(--pri);font-weight:800}
 .seg button small{display:block;font-size:11.5px;font-weight:600;opacity:.75;margin-top:1px}
 .seg button{height:46px;line-height:1.15;border:0;border-radius:11px;background:transparent;font:inherit;font-size:15.5px;font-weight:700;color:var(--fg2)}
 .seg button[aria-pressed="true"]{background:#fff;color:var(--pri);box-shadow:0 2px 8px rgba(20,40,90,.12)}
@@ -122,7 +123,10 @@ function reportErr(where,e){var msg=String((e&&(e.message||e))||'error').slice(0
 window.onerror=function(m,src,line,col,err){reportErr('js:'+line+':'+col,err||m)};
 window.addEventListener&&window.addEventListener('unhandledrejection',function(e){reportErr('promise',e&&e.reason)});
 var BOOT={machine:'HRM Process',dayStart:'07:00',dayEnd:'19:00',recorders:[]};var CONF=window.HRM_CONFIG||{};
-var PAGE_VER='v1.7.2';
+var PAGE_VER='v1.7.3';
+/* the team comes from the recorder's name (Settings → Members & teams on the PC) */
+function teamOf(n){var k=String(n||'').toUpperCase(),l=BOOT.members||[];for(var i=0;i<l.length;i++)if(l[i].name===k)return l[i].team||'';return ''}
+function teamShow(){var t=teamOf(document.getElementById('f-rec')?document.getElementById('f-rec').value:''),el=document.getElementById('team-badge');st.team=t;if(el){el.textContent=t?'ทีม '+t+' · Team '+t:'ทีมจะขึ้นเองตามชื่อ';el.className='team-badge'+(t?' on':'')}}
 var LS={get:function(k){try{return localStorage.getItem('hrmMob_'+k)}catch(e){return null}},set:function(k,v){try{localStorage.setItem('hrmMob_'+k,v)}catch(e){}},del:function(k){try{localStorage.removeItem('hrmMob_'+k)}catch(e){}}};
 /* Web App address: ?api= in the link (kept), else config.js */
 function qp(k){var m=new RegExp('[?&]'+k+'=([^&#]*)').exec(location.search);return m?decodeURIComponent(m[1].replace(/\+/g,' ')):''}
@@ -143,7 +147,7 @@ function connFail(e){var k=(e&&e.message)||'network',why=CONN_ERR[k]||(/^http_/.
   document.getElementById('app').innerHTML='<div class="gate card"><div class="top" style="margin:0 0 12px"><div class="logo">'+drop()+'</div><div><h1>HRM Hydraulic</h1><small>'+esc(BOOT.machine)+'</small></div></div><h2>เชื่อมต่อระบบไม่ได้</h2><p>'+esc(why)+'</p><button class="btn" onclick="start()">ลองใหม่ · Retry</button><a class="btn ghost" style="margin-top:10px;text-decoration:none" href="'+esc(location.pathname+'?check=1'+(API_FROM_URL?'&api='+encodeURIComponent(API_FROM_URL):''))+'">เช็กมือถือ · Phone check</a></div>'}
 var SYS=[['servo','Servo Hydraulic','servoL','servoT','--servo','Quinlubric 888-46'],['auxiliary','Auxiliary Hydraulic','auxL','auxT','--aux','Quinlubric 888-46'],['lubrication','Oil Lubrication','lubL','lubT','--lub','SHELL OMALA S2 G460']];
 var MS=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-var ERR={bad_code:'รหัสทีมไม่ถูกต้อง',bad_time:'เวลาต้องเป็นแบบ 24 ชม. เช่น 08:30',time_shift:'เวลาไม่อยู่ในช่วงของกะที่เลือก',no_recorder:'กรุณาเลือกชื่อผู้บันทึก',bad_recorder:'ชื่อผู้บันทึกไม่อยู่ในรายชื่อ',bad_team:'กรุณาเลือกทีม',no_values:'กรอกระดับน้ำมันอย่างน้อย 1 ระบบ',bad_level:'ระดับน้ำมันไม่ถูกต้อง',bad_temp:'อุณหภูมิต้องอยู่ระหว่าง -20 ถึง 200 °C',temp_without_level:'กรอกอุณหภูมิแล้วต้องกรอกระดับน้ำมันของระบบนั้นด้วย',future:'ไม่สามารถลงข้อมูลล่วงหน้าได้',too_old:'ย้อนหลังได้ไม่เกิน 62 วัน',bad_date:'วันที่ไม่ถูกต้อง',bad_system:'กรุณาเลือกระบบ',bad_drained:'กรอกปริมาณน้ำมันเก่าที่ถ่ายออก (L)',leak_not_lower:'ระดับปัจจุบันต้องน้อยกว่าก่อนพบรั่ว',no_location:'กรุณาระบุจุดที่รั่ว',no_action:'กรุณาพิมพ์งานที่ทำ',bad_type:'ประเภทเหตุการณ์ไม่ถูกต้อง',bad_tanks:'จำนวนถังต้องเป็น 1–50',after_not_higher:'ระดับหลังเติมต้องมากกว่าก่อนเติม',bad_reason:'กรุณาเลือกสาเหตุ',no_reason_text:'กรุณาพิมพ์สาเหตุที่เติม',no_before_after:'กรอกระดับน้ำมันก่อนและหลัง'};
+var ERR={bad_code:'รหัสทีมไม่ถูกต้อง',bad_time:'เวลาต้องเป็นแบบ 24 ชม. เช่น 08:30',time_shift:'เวลาไม่อยู่ในช่วงของกะที่เลือก',no_recorder:'กรุณาเลือกชื่อผู้บันทึก',bad_recorder:'ชื่อผู้บันทึกไม่อยู่ในรายชื่อ',bad_team:'ชื่อนี้ยังไม่ได้อยู่ในทีม ให้หัวหน้าตั้งทีมในโปรแกรมบนคอม (ตั้งค่า → สมาชิกและทีม)',no_values:'กรอกระดับน้ำมันอย่างน้อย 1 ระบบ',bad_level:'ระดับน้ำมันไม่ถูกต้อง',bad_temp:'อุณหภูมิต้องอยู่ระหว่าง -20 ถึง 200 °C',temp_without_level:'กรอกอุณหภูมิแล้วต้องกรอกระดับน้ำมันของระบบนั้นด้วย',future:'ไม่สามารถลงข้อมูลล่วงหน้าได้',too_old:'ย้อนหลังได้ไม่เกิน 62 วัน',bad_date:'วันที่ไม่ถูกต้อง',bad_system:'กรุณาเลือกระบบ',bad_drained:'กรอกปริมาณน้ำมันเก่าที่ถ่ายออก (L)',leak_not_lower:'ระดับปัจจุบันต้องน้อยกว่าก่อนพบรั่ว',no_location:'กรุณาระบุจุดที่รั่ว',no_action:'กรุณาพิมพ์งานที่ทำ',bad_type:'ประเภทเหตุการณ์ไม่ถูกต้อง',bad_tanks:'จำนวนถังต้องเป็น 1–50',after_not_higher:'ระดับหลังเติมต้องมากกว่าก่อนเติม',bad_reason:'กรุณาเลือกสาเหตุ',no_reason_text:'กรุณาพิมพ์สาเหตุที่เติม',no_before_after:'กรอกระดับน้ำมันก่อนและหลัง'};
 var REASONS={refill:[['oil_leakage','น้ำมันรั่ว'],['mt_drain','MT มีการ Drain น้ำมัน'],['other','ระบุเอง']],oil_change:[['scheduled_oil_change','เปลี่ยนตามรอบ'],['oil_degradation','น้ำมันเสื่อมสภาพ'],['other','ระบุเอง']]};
 var IC=function(p){return '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>'};
 var ACTS=[['refill','เติมน้ำมัน','Refill','#17904F',IC('<path d="M12 3.5c-3 3.9-5.2 6.8-5.2 9.4a5.2 5.2 0 0 0 10.4 0c0-2.6-2.2-5.5-5.2-9.4z"/><path d="M12 10.5v5M9.5 13h5"/>')],
@@ -163,7 +167,7 @@ function nowShift(){var d=new Date(),m=d.getHours()*60+d.getMinutes(),ds=hm(BOOT
 function uid(){var s='';var a=window.crypto&&crypto.getRandomValues?crypto.getRandomValues(new Uint8Array(12)):null;for(var i=0;i<12;i++)s+=('0'+((a?a[i]:Math.floor(Math.random()*256))).toString(16)).slice(-2);return 'M'+Date.now().toString(36)+'-'+s}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function thDate(s){var p=s.split('-');return (+p[2])+' '+MS[+p[1]-1]+' '+(+p[0]+543)}
-var st={shift:null,date:null,team:LS.get('team')||'',status:'run',mode:'read',act:'refill',rsys:'',tanks:1,reason:''};
+var st={shift:null,date:null,team:'',status:'run',mode:'read',act:'refill',rsys:'',tanks:1,reason:''};
 function getCode(){return LS.get('code')||BOOT.code||''}
 
 function gate(msg){var b=document.getElementById('bar');if(b)b.remove();
@@ -198,7 +202,7 @@ function form(){var ns=nowShift();st.shift=ns.shift;st.date=ns.date;var d=new Da
   '<label class="lbl" for="f-mwork" style="margin-top:10px">งานที่ทำ<span>Work done</span></label><textarea id="f-mwork" maxlength="200" placeholder="เช่น เปลี่ยนไส้กรอง, เปลี่ยนซีล" style="margin-top:0"></textarea></div>'+
   '<div class="card c-reason"><span class="lbl" id="lb-reason">สาเหตุที่เติมเพิ่ม<span>Reason</span></span><div class="reasons" id="reasons"></div><textarea id="f-rtext" placeholder="พิมพ์สาเหตุ…" maxlength="200" hidden></textarea></div></div>';
   h+='<div class="card"><label class="lbl" for="f-rec">ผู้บันทึก<span>Recorder</span></label><input id="f-rec" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="พิมพ์ตัวแรก เช่น O" value="'+esc((BOOT.recorders||[]).indexOf(LS.get('rec'))>=0?LS.get('rec'):'')+'" style="text-transform:uppercase;font-weight:800;letter-spacing:.5px"><div class="rec-chips" id="rec-chips"></div>'+
-  '<div style="margin-top:10px"><span class="lbl">ทีม<span>Team</span></span><div class="seg" id="seg-team"><button data-v="A">A</button><button data-v="B">B</button><button data-v="C">C</button></div></div>'+
+  '<div class="team-badge" id="team-badge"></div>'+
   '<div style="margin-top:10px" id="statuswrap"><span class="lbl">สถานะเครื่องจักร<span>Machine status</span></span><div class="seg st" id="seg-status"><button data-v="run">ใช้งาน</button><button data-v="stop">เครื่องจักรหยุด</button></div></div></div>'+
   '<div class="card"><span class="lbl">ส่งล่าสุด<span>Recent</span></span><div class="recent" id="recent"><div><span>กำลังโหลด…</span></div></div></div>'+
   '<div class="who"><span>ข้อมูลจะเข้าโปรแกรมบนคอมอัตโนมัติ · '+PAGE_VER+'</span><button onclick="logout()">เปลี่ยนรหัสทีม</button></div>';
@@ -208,7 +212,7 @@ function form(){var ns=nowShift();st.shift=ns.shift;st.date=ns.date;var d=new Da
   document.querySelectorAll('input,textarea,select').forEach(function(i){i.addEventListener(i.tagName==='SELECT'?'change':'input',function(){i.classList.remove('bad');showErr('')})});
   document.getElementById('recent').addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-x]');if(b)takeBack(b.dataset.id,b.dataset.x==='edit')});
   loadRecent();renderPend();flush(false)}
-function segs(){[['seg-shift','shift'],['seg-team','team'],['seg-status','status'],['seg-mode','mode'],['seg-act','act'],['seg-rsys','rsys'],['reasons','reason']].forEach(function(p){var g=document.getElementById(p[0]);if(!g)return;[].forEach.call(g.children,function(b){b.setAttribute('aria-pressed',String(st[p[1]]===b.dataset.v));b.onclick=function(){st[p[1]]=b.dataset.v;if(p[1]==='team')LS.set('team',b.dataset.v);segs();if(p[1]==='mode'||p[1]==='act'||p[1]==='rsys'||p[1]==='reason')modeUI(p[1])}})})}
+function segs(){[['seg-shift','shift'],['seg-status','status'],['seg-mode','mode'],['seg-act','act'],['seg-rsys','rsys'],['reasons','reason']].forEach(function(p){var g=document.getElementById(p[0]);if(!g)return;[].forEach.call(g.children,function(b){b.setAttribute('aria-pressed',String(st[p[1]]===b.dataset.v));b.onclick=function(){st[p[1]]=b.dataset.v;segs();if(p[1]==='mode'||p[1]==='act'||p[1]==='rsys'||p[1]==='reason')modeUI(p[1])}})})}
 function actOf(){return ACTS.filter(function(a){return a[0]===st.act})[0]}
 function modeUI(changed){var ac=st.mode==='act';document.getElementById('m-read').hidden=ac;document.getElementById('m-act').hidden=!ac;document.getElementById('statuswrap').hidden=ac;
   var A=actOf(),t=st.act;document.getElementById('ttl').textContent=ac?actTitle(A):'บันทึกระดับน้ำมัน';
@@ -233,12 +237,12 @@ function recChips(){var i=document.getElementById('f-rec'),box=document.getEleme
 function recSetup(){var i=document.getElementById('f-rec'),box=document.getElementById('rec-chips');if(!i)return;
   i.addEventListener('input',function(e){var v=i.value.toUpperCase().replace(/\s+/g,'');i.value=v;
     if(e.inputType&&e.inputType.indexOf('insert')===0&&v){var hit=(BOOT.recorders||[]).filter(function(n){return n.indexOf(v)===0})[0];if(hit&&hit!==v){i.value=hit;try{i.setSelectionRange(v.length,hit.length)}catch(_){}}}
-    recChips()});
+    recChips();teamShow()});
   i.addEventListener('focus',function(){try{i.select()}catch(_){}recChips()});
-  i.addEventListener('blur',function(){var v=i.value.toUpperCase(),all=BOOT.recorders||[];if(v&&all.indexOf(v)<0){var hit=all.filter(function(n){return n.indexOf(v)===0});if(hit.length===1)i.value=hit[0]}setTimeout(recChips,0)});
+  i.addEventListener('blur',function(){var v=i.value.toUpperCase(),all=BOOT.recorders||[];if(v&&all.indexOf(v)<0){var hit=all.filter(function(n){return n.indexOf(v)===0});if(hit.length===1)i.value=hit[0]}setTimeout(function(){recChips();teamShow()},0)});
   box.addEventListener('mousedown',function(e){e.preventDefault()});
-  box.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('button');if(!b)return;i.value=b.dataset.n;i.classList.remove('bad');showErr('');recChips()});
-  recChips()}
+  box.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('button');if(!b)return;i.value=b.dataset.n;i.classList.remove('bad');showErr('');recChips();teamShow()});
+  recChips();teamShow()}
 /* phone check page (…/exec?check=1): tells at a glance whether this phone can use the form */
 function checkPage(){var ua=String(navigator.userAgent||''),rows=[],bad=0;
   var inApp=/Line\/|FBAN|FBAV|Instagram|; wv\)/i.test(ua),old=!('Promise' in window)||!('fetch' in window);
@@ -261,14 +265,14 @@ function showErr(m){var e=document.getElementById('err');if(!e)return;e.textCont
 function val(id){var el=document.getElementById(id);return el?el.value.trim().replace(/,/g,''):''}
 ['input','change'].forEach(function(t){document.addEventListener(t,function(e){if(e.target&&e.target.classList)e.target.classList.remove('bad')},true)});
 function send(){showErr('');[].forEach.call(document.querySelectorAll('.bad'),function(x){x.classList.remove('bad')});if(st.mode==='act')return sendAct();var rec=val('f-rec').toUpperCase(),time=val('f-time'),date=document.getElementById('f-date').value;
-  var r={id:uid(),shiftDate:date,shift:st.shift,time:time,recorder:rec,team:st.team,status:st.status,replaces:st.replaces||'',device:(navigator.userAgent||'').slice(0,80)};var any=false;
+  var r={id:uid(),shiftDate:date,shift:st.shift,time:time,recorder:rec,team:teamOf(rec),status:st.status,replaces:st.replaces||'',device:(navigator.userAgent||'').slice(0,80)};var any=false;
   for(var i=0;i<SYS.length;i++){var s=SYS[i],L=val('f-'+s[2]),T=val('f-'+s[3]);r[s[2]]=L;r[s[3]]=T;
     if(L!==''){if(isNaN(+L)||+L<0||+L>20000)return bad('f-'+s[2],ERR.bad_level);any=true}else if(T!=='')return bad('f-'+s[2],ERR.temp_without_level);
     if(T!==''&&(isNaN(+T)||+T<-20||+T>200))return bad('f-'+s[3],ERR.bad_temp)}
   if(!any)return bad('f-servoL',ERR.no_values);
   var m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);if(!m)return bad('f-time',ERR.bad_time);var mins=+m[1]*60+ +m[2],ds=hm(BOOT.dayStart),de=hm(BOOT.dayEnd);
   if(st.shift==='day'?!(mins>=ds&&mins<de):!(mins>=de||mins<ds))return bad('f-time',ERR.time_shift);
-  if(!rec)return bad('f-rec',ERR.no_recorder);if((BOOT.recorders||[]).indexOf(rec)<0)return bad('f-rec',ERR.bad_recorder+': '+(BOOT.recorders||[]).join(', '));if(!st.team){showErr(ERR.bad_team);return}
+  if(!rec)return bad('f-rec',ERR.no_recorder);if((BOOT.recorders||[]).indexOf(rec)<0)return bad('f-rec',ERR.bad_recorder+': '+(BOOT.recorders||[]).join(', '));teamShow();if(!st.team)return bad('f-rec',ERR.bad_team);
   LS.set('rec',rec);var q=queue();q.push(r);saveQ(q);st.replaces='';clearVals();renderPend();
   var b=document.getElementById('send');b.disabled=true;b.textContent='กำลังส่ง…';
   flush(true).then(function(okN){b.disabled=false;b.innerHTML=sendLabel();var sum=SYS.filter(function(s){return r[s[2]]!==''}).map(function(s){return s[0]==='servo'?'Servo '+r.servoL:(s[0]==='auxiliary'?'Aux '+r.auxL:'Lube '+r.lubL)}).join(' · ');
@@ -278,7 +282,7 @@ function checkTime(time){var m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);if(!m)re
   if(st.shift==='day'?!(mins>=ds&&mins<de):!(mins>=de||mins<ds))return 'time_shift';return ''}
 function sendAct(){var rec=val('f-rec').toUpperCase(),time=val('f-time'),date=document.getElementById('f-date').value,t=st.act,A=actOf();
   if(!st.rsys){showErr(ERR.bad_system);document.getElementById('seg-rsys').scrollIntoView({block:'center'});return}
-  var e={kind:'event',type:t,id:uid(),shiftDate:date,shift:st.shift,time:time,recorder:rec,team:st.team,system:st.rsys,replaces:st.replaces||'',device:(navigator.userAgent||'').slice(0,80)};
+  var e={kind:'event',type:t,id:uid(),shiftDate:date,shift:st.shift,time:time,recorder:rec,team:teamOf(rec),system:st.rsys,replaces:st.replaces||'',device:(navigator.userAgent||'').slice(0,80)};
   var lvl=function(id){var v=val(id);return v===''||isNaN(+v)||+v<0||+v>20000?null:v};
   if(t==='refill'||t==='oil_change'){var k=parseInt(val('f-tanks'),10);if(!(k>=1&&k<=50))return bad('f-tanks',ERR.bad_tanks);e.tanks=k}
   if(t==='oil_change'){var dr=lvl('f-drained');if(dr==null)return bad('f-drained',ERR.bad_drained);e.drainedL=dr}
@@ -289,7 +293,7 @@ function sendAct(){var rec=val('f-rec').toUpperCase(),time=val('f-time'),date=do
   if(t==='refill'||t==='oil_change'){if(!st.reason){showErr(ERR.bad_reason);document.getElementById('reasons').scrollIntoView({block:'center'});return}
     var rt=val('f-rtext');if(st.reason==='other'&&!rt)return bad('f-rtext',ERR.no_reason_text);e.reason=st.reason;e.reasonText=st.reason==='other'?rt:''}
   var te=checkTime(time);if(te)return bad('f-time',ERR[te]);
-  if(!rec)return bad('f-rec',ERR.no_recorder);if((BOOT.recorders||[]).indexOf(rec)<0)return bad('f-rec',ERR.bad_recorder+': '+(BOOT.recorders||[]).join(', '));if(!st.team){showErr(ERR.bad_team);return}
+  if(!rec)return bad('f-rec',ERR.no_recorder);if((BOOT.recorders||[]).indexOf(rec)<0)return bad('f-rec',ERR.bad_recorder+': '+(BOOT.recorders||[]).join(', '));teamShow();if(!st.team)return bad('f-rec',ERR.bad_team);
   LS.set('rec',rec);var q=queue();q.push(e);saveQ(q);st.replaces='';renderPend();
   var sysName=SYS.filter(function(x){return x[0]===e.system})[0][1];
   ['f-before','f-after','f-rtext','f-drained','f-loc','f-cause','f-laction','f-mloc','f-mwork'].forEach(function(id){var x=document.getElementById(id);if(x)x.value=''});document.getElementById('f-tanks').value='1';st.tanks=1;st.reason='';segs();modeUI();
@@ -333,7 +337,7 @@ function takeBack(id,edit){var x=mine(id);if(!x)return;
       if(r&&r.error==='bad_code'){LS.del('code');BOOT.code='';keepUrl('');gate('รหัสทีมถูกเปลี่ยน กรุณาใส่รหัสใหม่');return}
       showErr('ทำรายการไม่สำเร็จ: '+((r&&r.error)||''))}).catch(function(){showErr('เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง')})})}
 function fillFrom(x){st.replaces=x.id;var set=function(id,v){var el=document.getElementById(id);if(el)el.value=v==null?'':v};
-  set('f-date',x.shiftDate);set('f-time',x.time);st.shift=x.shift;set('f-rec',x.recorder);recChips();if(x.team){st.team=x.team;LS.set('team',x.team)}
+  set('f-date',x.shiftDate);set('f-time',x.time);st.shift=x.shift;set('f-rec',x.recorder);recChips();teamShow();
   if(x.kind==='event'||x.kind==='refill'){st.mode='act';st.act=x.type||'refill';st.rsys=x.system;st.reason=x.reason||'';set('f-tanks',x.tanks||1);set('f-before',x.beforeL);set('f-after',x.afterL);set('f-rtext',x.reasonText);
     set('f-drained',x.drainedL);set('f-loc',x.location);set('f-cause',x.cause);set('f-laction',x.action);set('f-mloc',x.location);set('f-mwork',x.action)}
   else{st.mode='read';st.status=x.status||'run';SYS.forEach(function(s){set('f-'+s[2],x[s[2]]);set('f-'+s[3],x[s[3]])})}

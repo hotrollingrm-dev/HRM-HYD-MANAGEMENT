@@ -25,10 +25,16 @@ const EV_TYPES = {                                    // phone actions and the r
 };
 const HEAD = ['id', 'receivedAt', 'shiftDate', 'shift', 'time', 'recorder', 'team', 'status',
   'servoL', 'servoT', 'auxL', 'auxT', 'lubL', 'lubT', 'note', 'device', 'imported'];
-const RECORDERS = ['TOM', 'NES', 'NU', 'JOE', 'SONG', 'WAT', 'BAS', 'NOOM', 'TIME', 'JILL', 'OIL', 'SUT', 'MOS'];   // default list; the PC program keeps the RECORDERS row in Config up to date
+/* members: NAME:TEAM — the team comes from the name. The PC program keeps the RECORDERS row in Config up to date */
+const RECORDERS = 'NES:A NU:A JOE:A SONG:A WAT:B NOOM:B BAS:B TIME:B JILL:C SUT:C OIL:C MOS:C';
+function members_(c) {
+  const parse = s => String(s || '').toUpperCase().split(/[\s,;]+/).map(x => /^([A-Z0-9]{1,12})(?::([ABC]))?$/.exec(x)).filter(Boolean).map(m => ({ name: m[1], team: m[2] || '' }));
+  const l = parse(c && c.RECORDERS);
+  return l.length ? l : parse(RECORDERS);
+}
+function teamFor_(name, c) { const k = String(name || '').trim().toUpperCase(); const m = members_(c).filter(x => x.name === k)[0]; return m ? m.team : ''; }
 function recorders_(c) {
-  const l = String((c && c.RECORDERS) || '').toUpperCase().split(/[\s,;]+/).filter(n => /^[A-Z0-9]{1,12}$/.test(n));
-  return l.length ? l : RECORDERS;
+  return members_(c).map(m => m.name);
 }
 const SYS = [['servo', 'servoL', 'servoT'], ['auxiliary', 'auxL', 'auxT'], ['lubrication', 'lubL', 'lubT']];
 
@@ -128,7 +134,7 @@ function doGet(e) {
   const pc = String(p.c || '').trim();
   let url = '';
   try { url = ScriptApp.getService().getUrl(); } catch (err) { url = ''; }
-  t.boot = JSON.stringify({ dayStart: c.DAY_START || '07:00', dayEnd: c.DAY_END || '19:00', machine: c.MACHINE || 'HRM Process', recorders: recorders_(c),
+  t.boot = JSON.stringify({ dayStart: c.DAY_START || '07:00', dayEnd: c.DAY_END || '19:00', machine: c.MACHINE || 'HRM Process', recorders: recorders_(c), members: members_(c),
     url: url, code: pc && pc === c.TEAM_CODE ? pc : '', codeErr: pc && pc !== c.TEAM_CODE ? 'bad_code' : '', check: !!p.check });
   return t.evaluate().setTitle('HRM Hydraulic · บันทึกระดับน้ำมัน')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1')
@@ -263,7 +269,7 @@ function phoneApi_(p) {
 function phoneBoot(code) {
   const c = cfg_(), ok = !!code && String(code).trim() === c.TEAM_CODE;
   return { ok: true, codeOk: ok, dayStart: c.DAY_START || '07:00', dayEnd: c.DAY_END || '19:00', machine: c.MACHINE || 'HRM Process',
-    recorders: ok ? recorders_(c) : [], version: SERVER_VER };
+    recorders: ok ? recorders_(c) : [], members: ok ? members_(c) : [], version: SERVER_VER };
 }
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 
@@ -332,12 +338,12 @@ function api_(p) {
     } finally { lock.releaseLock(); }
   }
   if (p.action === 'names') {   // the PC program sends its recorder list
-    const list = String(p.names || '').toUpperCase().split(/[\s,;]+/).filter(n => /^[A-Z0-9]{1,12}$/.test(n));
+    const list = String(p.names || '').toUpperCase().split(/[\s,;]+/).filter(n => /^[A-Z0-9]{1,12}(:[ABC])?$/.test(n));
     if (!list.length) return { ok: false, error: 'bad_names' };
     const cs = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG);
     const keys = cs.getRange(1, 1, Math.max(1, cs.getLastRow()), 1).getValues().map(r => String(r[0]).trim());
     let row = keys.indexOf('RECORDERS') + 1;
-    if (!row) { row = cs.getLastRow() + 1; cs.getRange(row, 1).setValue('RECORDERS'); cs.getRange(row, 3).setValue('รายชื่อผู้บันทึก (ส่งมาจากโปรแกรมบนคอม)'); }
+    if (!row) { row = cs.getLastRow() + 1; cs.getRange(row, 1).setValue('RECORDERS'); cs.getRange(row, 3).setValue('สมาชิก ชื่อ:ทีม (ส่งมาจากโปรแกรมบนคอม)'); }
     cs.getRange(row, 2).setNumberFormat('@').setValue(list.join(' '));
     return { ok: true, names: list };
   }
@@ -352,6 +358,7 @@ function checkCode(code) {
 function submitReading(code, r) {
   const c = cfg_();
   if (String(code || '').trim() !== c.TEAM_CODE) return { ok: false, error: 'bad_code' };
+  if (r && typeof r === 'object') r.team = teamFor_(r.recorder, c) || r.team;   // the team comes from the name
   const err = validate_(r, c);
   if (err) return { ok: false, error: err };
   const lock = LockService.getScriptLock(); lock.waitLock(15000);
@@ -377,6 +384,7 @@ function submitReading(code, r) {
 function submitEvent(code, e) {
   const c = cfg_();
   if (String(code || '').trim() !== c.TEAM_CODE) return { ok: false, error: 'bad_code' };
+  if (e && typeof e === 'object') e.team = teamFor_(e.recorder, c) || e.team;
   const err = validateEv_(e, c);
   if (err) return { ok: false, error: err };
   const lock = LockService.getScriptLock(); lock.waitLock(15000);
@@ -399,7 +407,7 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.7.2';
+const SERVER_VER = 'v1.7.3';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   return { ok: true, version: SERVER_VER, time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') };
