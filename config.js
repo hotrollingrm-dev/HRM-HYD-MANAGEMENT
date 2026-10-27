@@ -4,5 +4,5 @@
  * ห้ามใส่ TEAM_CODE หรือ SYNC_KEY ในไฟล์นี้ (repo นี้เป็นสาธารณะ)
  */
 window.HRM_CONFIG = {
-  api: 'https://script.google.com/macros/s/AKfycbxFTX1OsdCxVg2yRfNwkuMpnJ4evL7ZT0nBDQ4VrYcSOQ2awxw8-5yAvVaLnE0giEMS/exec'
+  api: 'https://script.google.com/macros/s/AKfycbyoiYABBgXmkXrDzxccSeJtT_aKnADQNGA1xOgHcAXuXe7g1NBpRUQWpFxrK0LFCNkc/exec'
 };
