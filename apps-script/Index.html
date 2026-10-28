@@ -122,7 +122,7 @@ window.onerror=function(m,src,line,col,err){reportErr('js:'+line+':'+col,err||m)
 window.addEventListener&&window.addEventListener('unhandledrejection',function(e){reportErr('promise',e&&e.reason)});
 var BOOT=<?!= boot ?>;
 /* abnormal level drop: compare with the last level of each system (from the server, kept on the phone for offline use) */
-var DROP_REASONS=[['slow_return','น้ำมันไหลกลับแทงก์ช้า'],['mt_drain','มี Drain จาก Maintenance'],['other','ระบุเอง']];
+var DROP_REASONS=[['slow_return','น้ำมันไหลกลับแทงก์ช้า'],['mt_drain','มี Drain จาก Maintenance'],['leak','น้ำมันรั่ว'],['parts','เปลี่ยน/ซ่อมอุปกรณ์'],['other','ระบุเอง']];
 var LAST={last:{},rates:{servo:5,auxiliary:4,lubrication:4}};try{var _l=JSON.parse(localStorage.getItem('hrmMob_last')||'null');if(_l&&_l.last)LAST=_l}catch(_){}
 function saveLast(){try{localStorage.setItem('hrmMob_last',JSON.stringify(LAST))}catch(_){}}
 function loadLast(){if(typeof call!=='function')return;call('phoneLast',[getCode()]).then(function(r){if(r&&r.ok){LAST={last:r.last||{},rates:r.rates||LAST.rates};saveLast();dropUI()}},function(){})}
@@ -134,7 +134,7 @@ function drops(){var ts=readTs(document.getElementById('f-date')?document.getEle
 function dropUI(clicked){var c=document.getElementById('drop-card');if(!c)return;var l=st.mode==='act'?[]:drops();c.hidden=!l.length;if(!l.length){return}
   document.getElementById('drop-list').innerHTML=l.map(function(x){return '<div class="drop-it"><b>'+esc(x.name)+'</b><span>'+x.from+' → '+(x.from-x.drop)+' L · ลด '+x.drop+' L ใน '+x.hrs+' ชม. ('+x.rate+' L/ชม.)</span></div>'}).join('');
   var tx=document.getElementById('f-droptext');tx.hidden=st.drop!=='other';if(clicked&&st.drop==='other')tx.focus()}
-var PAGE_VER='v1.8.4';
+var PAGE_VER='v1.8.5';
 /* the team comes from the recorder's name (Settings → Members & teams on the PC) */
 function teamOf(n){var k=String(n||'').toUpperCase(),l=BOOT.members||[];for(var i=0;i<l.length;i++)if(l[i].name===k)return l[i].team||'';return ''}
 function teamShow(){var t=teamOf(document.getElementById('f-rec')?document.getElementById('f-rec').value:''),el=document.getElementById('team-badge');st.team=t;if(el){el.textContent=t?'ทีม '+t+' · Team '+t:'ทีมจะขึ้นเองตามชื่อ';el.className='team-badge'+(t?' on':'')}}

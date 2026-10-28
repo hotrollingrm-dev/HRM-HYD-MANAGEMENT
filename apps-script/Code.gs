@@ -651,7 +651,7 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.8.4';
+const SERVER_VER = 'v1.8.5';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   return { ok: true, version: SERVER_VER, time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') };
