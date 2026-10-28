@@ -258,7 +258,7 @@ function dbMirror_(obj, force) {
 }
 
 /* phone page hosted outside Apps Script (e.g. GitHub Pages) calls the same functions through POST {action:'phone', fn, args} */
-const PHONE_FNS = { phoneBoot: phoneBoot, checkCode: checkCode, submitReading: submitReading, submitEvent: submitEvent,
+const PHONE_FNS = { phoneLast: phoneLast, phoneBoot: phoneBoot, checkCode: checkCode, submitReading: submitReading, submitEvent: submitEvent,
   cancelEntry: cancelEntry, recent: recent, logClientError: logClientError, phoneCheck: phoneCheck };
 function phoneApi_(p) {
   const fn = PHONE_FNS[String(p.fn || '')];
@@ -267,6 +267,36 @@ function phoneApi_(p) {
   catch (err) { return { ok: false, error: 'server_error', detail: String(err && err.message || err).slice(0, 200) }; }
 }
 /* settings the phone page needs; the recorder list only after the right team code */
+/* last level of each system (PC data, phone readings, phone refills) + abnormal-drop limits (L/hour) for the phone's check */
+function tsBkk_(date, time, shift, c) {
+  const d = /^(\d{4})-(\d{2})-(\d{2})/.exec(normDate_(date)), t = /^(\d{1,2}):(\d{2})/.exec(String(time || ''));
+  if (!d || !t) return null;
+  let ms = Date.UTC(+d[1], +d[2] - 1, +d[3], +t[1], +t[2]) - 7 * 3600000;
+  if (shift === 'night' && (+t[1] * 60 + +t[2]) < hm_(c.DAY_START || '08:00')) ms += 864e5;
+  return ms;
+}
+function sysRates_(c) {
+  const o = { servo: 5, auxiliary: 4, lubrication: 4 };
+  String(c.SYS_RATES || '').split(/[\s,;]+/).forEach(x => { const m = /^(servo|auxiliary|lubrication):(\d+(\.\d+)?)$/.exec(x); if (m) o[m[1]] = Number(m[2]); });
+  return o;
+}
+function phoneLast(code) {
+  const c = cfg_();
+  if (String(code || '').trim() !== c.TEAM_CODE) return { ok: false, error: 'bad_code' };
+  const last = {}, put = (k, level, ts) => { if (!isFinite(level) || !isFinite(ts)) return; if (!last[k] || ts > last[k].ts) last[k] = { level: Math.round(Number(level)), ts: ts }; };
+  try { const txt = dbRead_(); if (txt) (JSON.parse(txt).records || []).forEach(r => { if (r && r.systemType && r.level != null) put(r.systemType, Number(r.level), Number(r.ts)); }); } catch (e) { }
+  const ss = SpreadsheetApp.getActiveSpreadsheet(), ib = ss.getSheetByName(INBOX);
+  if (ib && ib.getLastRow() > 1) ib.getRange(2, 1, ib.getLastRow() - 1, HEAD.length).getDisplayValues().forEach(v => {
+    const ts = tsBkk_(v[2], v[4], v[3], c); if (ts == null) return;
+    SYS.forEach(x => { const L = String(v[HEAD.indexOf(x[1])]).replace(/,/g, '').trim(); if (L !== '') put(x[0], Number(L), ts); });
+  });
+  const ev = ss.getSheetByName(EVENTS);
+  if (ev && ev.getLastRow() > 1) ev.getRange(2, 1, ev.getLastRow() - 1, HEAD_EV.length).getDisplayValues().forEach(v => {
+    const ts = tsBkk_(v[HEAD_EV.indexOf('shiftDate')], v[HEAD_EV.indexOf('time')], v[HEAD_EV.indexOf('shift')], c), a = String(v[HEAD_EV.indexOf('afterL')]).replace(/,/g, '').trim();
+    if (ts != null && a !== '') put(v[HEAD_EV.indexOf('system')], Number(a), ts);
+  });
+  return { ok: true, last: last, rates: sysRates_(c) };
+}
 function phoneBoot(code) {
   const c = cfg_(), ok = !!code && String(code).trim() === c.TEAM_CODE;
   return { ok: true, codeOk: ok, dayStart: c.DAY_START || '08:00', dayEnd: c.DAY_END || '20:00', machine: c.MACHINE || 'HRM Process',
@@ -351,6 +381,7 @@ function api_(p) {
     if (hmOk(p.dayStart) && hmOk(p.dayEnd) && hm_(p.dayStart) < hm_(p.dayEnd)) { setCfg_('DAY_START', p.dayStart, 'เวลาเริ่มกะเช้า'); setCfg_('DAY_END', p.dayEnd, 'เวลาเริ่มกะดึก'); }
     if (p.rota != null && /^(\d{4}-\d{2}-\d{2}\|[ABC-]{2}(,[ABC-]{2}){0,59})?$/.test(String(p.rota))) setCfg_('ROTA', String(p.rota), 'ตารางหมุนกะ: วันเริ่มรอบ|เช้าดึก,… (ส่งมาจากโปรแกรมบนคอม)');
     if (p.rotaCal != null && /^(\d{4}-\d{2}-\d{2}\|[ABC-]{2}(,[ABC-]{2}){0,1499})?$/.test(String(p.rotaCal))) setCfg_('ROTA_CAL', String(p.rotaCal), 'ปฏิทินกะรายวัน: วันแรก|เช้าดึก,… (ส่งมาจากโปรแกรมบนคอม)');
+    if (p.rates != null && /^((servo|auxiliary|lubrication):\d+(\.\d+)?,?){0,3}$/.test(String(p.rates))) setCfg_('SYS_RATES', String(p.rates), 'เกณฑ์ลดผิดปกติ L/ชม. (ส่งมาจากโปรแกรมบนคอม)');
     if (p.link != null && /^(https:\/\/[^\s"'<>]{8,300})?$/.test(String(p.link))) setCfg_('PHONE_LINK', String(p.link), 'ลิงก์หน้ามือถือ (แนบในข้อความแจ้งเตือน LINE)');
     return { ok: true, names: list };
   }
@@ -455,9 +486,9 @@ const leftText_ = m => m >= 60 ? Math.floor(m / 60) + ' ชม. ' + (m % 60) + '
 function shiftCard_(c, sn, miss, kind) {   // kind: alert | check | test
   const team = rotaTeam_(c, sn.shiftDate, sn.shift), shName = sn.shift === 'day' ? 'กะเช้า' : 'กะดึก';
   const range = sn.shift === 'day' ? (c.DAY_START || '08:00') + '–' + (c.DAY_END || '20:00') : (c.DAY_END || '20:00') + '–' + (c.DAY_START || '08:00');
-  const done = !miss.length, RED = '#E53935', GREEN = '#1E9E5B', BLUE = '#2F6BEA';
+  const done = !miss.length, RED = '#E53935', GREEN = '#1E9E5B', BLUE = '#3E6AC9';
   const head = kind === 'test' ? '✅ ทดสอบระบบแจ้งเตือน' : done ? '✅ ลงระดับน้ำมันครบแล้ว' : kind === 'alert' ? '⚠️ แจ้งเตือน! ยังไม่ลงระดับน้ำมัน' : '📋 สถานะกะตอนนี้';
-  const color = kind === 'test' ? BLUE : done ? GREEN : RED;
+  const color = done ? GREEN : BLUE;   // design 2 (หุ่นไฮโดร): blue card, green when everything is in
   const txt = (t, o) => Object.assign({ type: 'text', text: String(t), wrap: true }, o || {});
   const rows = SYS.map(x => { const bad = miss.indexOf(x[0]) >= 0; return { type: 'box', layout: 'horizontal', spacing: 'md', paddingAll: '8px', cornerRadius: '8px', backgroundColor: bad ? '#FDECEC' : '#EAF7F0',
     contents: [txt(bad ? '❌' : '✅', { flex: 0, size: 'md' }), txt(SYS_FULL[x[0]], { flex: 5, size: 'md', weight: 'bold', color: bad ? '#B42318' : '#14653F' }), txt(bad ? 'ยังไม่ลง' : 'ลงแล้ว', { flex: 2, size: 'sm', align: 'end', color: bad ? '#B42318' : '#14653F', gravity: 'center' })] }; });
@@ -469,6 +500,8 @@ function shiftCard_(c, sn, miss, kind) {   // kind: alert | check | test
   const bubble = { type: 'bubble', size: 'mega',
     header: { type: 'box', layout: 'vertical', backgroundColor: color, paddingAll: '16px', contents: [txt(head, { color: '#FFFFFF', weight: 'bold', size: 'lg' }), txt('HRM Hydraulic · ระดับน้ำมันไฮดรอลิก', { color: '#FFFFFFCC', size: 'xs', margin: 'xs' })] },
     body: { type: 'box', layout: 'vertical', paddingAll: '16px', contents: body } };
+  const site = /^(https:\/\/[^\/?#]+)/.exec(c.PHONE_LINK || '');
+  if (site) bubble.hero = { type: 'image', url: site[1] + '/line/' + (done ? 'robot-ok.png' : 'robot-alert.png'), size: 'full', aspectRatio: '20:13', aspectMode: 'cover' };
   if (link && !done) bubble.footer = { type: 'box', layout: 'vertical', paddingAll: '12px', contents: [{ type: 'button', style: 'primary', color: color, height: 'md', action: { type: 'uri', label: '📱 เปิดหน้าบันทึก', uri: link } }] };
   const alt = (kind === 'test' ? '✅ ทดสอบระบบแจ้งเตือน · ' : '') + (team ? 'ทีม ' + team + ' ' : '') + shName + ' ' + thDay_(sn.shiftDate) + ' · ' + (done ? 'ลงครบ 3 ระบบแล้ว' : '⚠️ ยังไม่ลง: ' + miss.map(k => SYS_NAME[k]).join(', '));
   return { type: 'flex', altText: alt.slice(0, 390), contents: bubble };
@@ -618,7 +651,7 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.8.3';
+const SERVER_VER = 'v1.8.4';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   return { ok: true, version: SERVER_VER, time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') };

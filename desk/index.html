@@ -5386,8 +5386,10 @@ function mobRowTs(row){const m=/^(\d{1,2}):(\d{2})/.exec(String(row.time||''));c
 function mobImport(rows){const have=new Set(REC.map(r=>r.id));let n=0;const sysCols={servo:['servoL','servoT'],auxiliary:['auxL','auxT'],lubrication:['lubL','lubT']};const found=[];
   rows.forEach(row=>{const ts=mobRowTs(row);if(ts==null)return;
     SYS_IDS.forEach(id=>{const [lc,tc]=sysCols[id];const L=String(row[lc]??'').replace(/,/g,'').trim();if(L===''||isNaN(+L))return;const rid='MOB-'+row.id+'-'+id;if(have.has(rid))return;
-      const tv=String(row[tc]??'').trim();const r=makeRec(id,ts,+L,row.status==='stop'?'stop':'run',normRec(row.recorder),T('fromMobile'),false,teamOf(row.recorder)||(['A','B','C'].includes(row.team)?row.team:''),tv===''||isNaN(+tv)?null:+tv);
-      r.id=rid;r.source='mobile';REC.push(r);have.add(rid);n++;const f=detectFor(r);if(f)found.push([f,id])})});
+      const tv=String(row[tc]??'').trim();const dm=/^ลดผิดปกติ \[([a-z,]+)\]: ?(.*)$/.exec(String(row.note||'')),dropWhy=dm&&dm[1].split(',').includes(id)?dm[2]:'';
+      const r=makeRec(id,ts,+L,row.status==='stop'?'stop':'run',normRec(row.recorder),T('fromMobile')+(dropWhy?' · ลดผิดปกติ: '+dropWhy:''),false,teamOf(row.recorder)||(['A','B','C'].includes(row.team)?row.team:''),tv===''||isNaN(+tv)?null:+tv);
+      r.id=rid;r.source='mobile';REC.push(r);have.add(rid);n++;const f=detectFor(r);if(f)found.push([f,id]);
+      if(dropWhy){const ab=EVTS.find(e=>e.eventType==='abnormal'&&e.recId===r.id);if(ab){ab.cause=dropWhy;ab.note=(ab.note?ab.note+' · ':'')+'สาเหตุจากหน้างาน: '+dropWhy}}})});
   return {n,found}}
 /* refills sent from phones → same refill event (+ before/after readings) as the PC form makes */
 /* history of phone entries taken back / fixed before the PC pulled them (kept in the shared file) */
@@ -5422,7 +5424,7 @@ async function mobPull(manual){const c=mobCfg();if(!c.on&&!manual)return;if(!c.u
   finally{MOB.busy=false;mobRefreshUI()}}
 /* the phone page uses the same recorder list as this program */
 let _namesSent='';
-async function mobSendNames(force){const c=mobCfg();if(!c.url||!c.key)return;const list=members().map(m=>m.name+':'+m.team).join(',');const pay={action:'names',key:c.key,names:list,dayStart:SHIFT_CFG.dayStart,dayEnd:SHIFT_CFG.dayEnd,rota:rotaStr(),rotaCal:shiftCal().start?shiftCal().src:'',link:/^https:\/\//.test(mobPhoneUrl(''))?mobPhoneUrl(''):''};const sig=_js(pay);if(!force&&_namesSent===sig)return;try{const o=await mobCall(pay);if(o&&o.ok)_namesSent=sig}catch(e){}}
+async function mobSendNames(force){const c=mobCfg();if(!c.url||!c.key)return;const list=members().map(m=>m.name+':'+m.team).join(',');const pay={action:'names',key:c.key,names:list,dayStart:SHIFT_CFG.dayStart,dayEnd:SHIFT_CFG.dayEnd,rota:rotaStr(),rates:SYS_IDS.map(k=>k+':'+(+sc(k).abnormalRate||0)).join(','),rotaCal:shiftCal().start?shiftCal().src:'',link:/^https:\/\//.test(mobPhoneUrl(''))?mobPhoneUrl(''):''};const sig=_js(pay);if(!force&&_namesSent===sig)return;try{const o=await mobCall(pay);if(o&&o.ok)_namesSent=sig}catch(e){}}
 function mobStart(){clearInterval(MOB.timer);MOB.timer=setInterval(()=>{if(!document.hidden)mobPull(false)},60000);setTimeout(()=>mobPull(false),4000)}
 function mobRefreshUI(){const c=$('#mob-card');if(c&&UI.page==='settings'){const s=$('#mob-status');if(s)s.innerHTML=mobStatusHTML()}}
 function mobStatusHTML(){const c=mobCfg();if(!c.url||!c.key)return `<span class="sync-chip local"><i></i>${L('mobOff')}</span>`;

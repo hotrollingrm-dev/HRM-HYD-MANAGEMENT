@@ -68,6 +68,8 @@ input.bad{border-color:var(--bad);background:#FDF0F0}
 .stepper input{height:58px;text-align:center;font-size:26px;font-weight:800}
 .tankunit{display:block;text-align:center;margin-top:4px;font-size:13px;color:var(--fg2);font-weight:600}
 .reasons{display:grid;gap:8px}
+.c-drop{border:2px solid #F5B8B8;background:#FFF6F6}.drop-list{display:grid;gap:6px;margin:4px 0 12px}.drop-it{padding:9px 12px;border-radius:12px;background:#FDE3E3;color:#9B1C1C;font-size:14.5px}.drop-it b{display:block;font-size:15.5px}
+#f-droptext{margin-top:10px}
 .reasons button{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 14px;border:1.5px solid var(--line);border-radius:16px;background:#fff;font:inherit;font-size:16.5px;font-weight:700;color:var(--fg);text-align:left}
 .reasons button i{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid #C3CAD6;display:grid;place-items:center}
 .reasons button[aria-pressed="true"]{border-color:var(--run);background:#EAF7F0;color:#0F6B39}
@@ -119,7 +121,20 @@ function reportErr(where,e){var msg=String((e&&(e.message||e))||'error').slice(0
 window.onerror=function(m,src,line,col,err){reportErr('js:'+line+':'+col,err||m)};
 window.addEventListener&&window.addEventListener('unhandledrejection',function(e){reportErr('promise',e&&e.reason)});
 var BOOT=<?!= boot ?>;
-var PAGE_VER='v1.8.3';
+/* abnormal level drop: compare with the last level of each system (from the server, kept on the phone for offline use) */
+var DROP_REASONS=[['slow_return','น้ำมันไหลกลับแทงก์ช้า'],['mt_drain','มี Drain จาก Maintenance'],['other','ระบุเอง']];
+var LAST={last:{},rates:{servo:5,auxiliary:4,lubrication:4}};try{var _l=JSON.parse(localStorage.getItem('hrmMob_last')||'null');if(_l&&_l.last)LAST=_l}catch(_){}
+function saveLast(){try{localStorage.setItem('hrmMob_last',JSON.stringify(LAST))}catch(_){}}
+function loadLast(){if(typeof call!=='function')return;call('phoneLast',[getCode()]).then(function(r){if(r&&r.ok){LAST={last:r.last||{},rates:r.rates||LAST.rates};saveLast();dropUI()}},function(){})}
+function readTs(date,time,shift){var d=/^(\d{4})-(\d{2})-(\d{2})$/.exec(date||''),t=/^(\d{1,2}):(\d{2})$/.exec(time||'');if(!d||!t)return null;var ms=Date.UTC(+d[1],+d[2]-1,+d[3],+t[1],+t[2])-7*3600000;
+  if(shift==='night'&&(+t[1]*60+ +t[2])<hm(BOOT.dayStart))ms+=86400000;return ms}
+function drops(){var ts=readTs(document.getElementById('f-date')?document.getElementById('f-date').value:'',val('f-time'),st.shift),out=[];if(ts==null)return out;
+  SYS.forEach(function(s){var v=val('f-'+s[2]),p=LAST.last[s[0]];if(v===''||isNaN(+v)||!p)return;var hrs=(ts-p.ts)/3600000;if(hrs<0.25||hrs>26)return;var d=p.level-(+v),rate=d/hrs,lim=+LAST.rates[s[0]]||5;
+    if(rate>lim)out.push({id:s[0],name:s[1],drop:Math.round(d),hrs:Math.round(hrs*10)/10,rate:Math.round(rate*10)/10,from:p.level})});return out}
+function dropUI(clicked){var c=document.getElementById('drop-card');if(!c)return;var l=st.mode==='act'?[]:drops();c.hidden=!l.length;if(!l.length){return}
+  document.getElementById('drop-list').innerHTML=l.map(function(x){return '<div class="drop-it"><b>'+esc(x.name)+'</b><span>'+x.from+' → '+(x.from-x.drop)+' L · ลด '+x.drop+' L ใน '+x.hrs+' ชม. ('+x.rate+' L/ชม.)</span></div>'}).join('');
+  var tx=document.getElementById('f-droptext');tx.hidden=st.drop!=='other';if(clicked&&st.drop==='other')tx.focus()}
+var PAGE_VER='v1.8.4';
 /* the team comes from the recorder's name (Settings → Members & teams on the PC) */
 function teamOf(n){var k=String(n||'').toUpperCase(),l=BOOT.members||[];for(var i=0;i<l.length;i++)if(l[i].name===k)return l[i].team||'';return ''}
 function teamShow(){var t=teamOf(document.getElementById('f-rec')?document.getElementById('f-rec').value:''),el=document.getElementById('team-badge');st.team=t;if(el){el.textContent=t?'ทีม '+t+' · Team '+t:'ทีมจะขึ้นเองตามชื่อ';el.className='team-badge'+(t?' on':'')}}
@@ -148,7 +163,7 @@ function nowShift(){var d=new Date(),m=d.getHours()*60+d.getMinutes(),ds=hm(BOOT
 function uid(){var s='';var a=window.crypto&&crypto.getRandomValues?crypto.getRandomValues(new Uint8Array(12)):null;for(var i=0;i<12;i++)s+=('0'+((a?a[i]:Math.floor(Math.random()*256))).toString(16)).slice(-2);return 'M'+Date.now().toString(36)+'-'+s}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function thDate(s){var p=s.split('-');return (+p[2])+' '+MS[+p[1]-1]+' '+(+p[0]+543)}
-var st={shift:null,date:null,team:'',status:'run',mode:'read',act:'refill',rsys:'',tanks:1,reason:''};
+var st={drop:'',shift:null,date:null,team:'',status:'run',mode:'read',act:'refill',rsys:'',tanks:1,reason:''};
 function getCode(){return LS.get('code')||BOOT.code||''}
 
 function gate(msg){var b=document.getElementById('bar');if(b)b.remove();
@@ -171,6 +186,8 @@ function form(){var ns=nowShift();st.shift=ns.shift;st.date=ns.date;var d=new Da
   '<div style="margin-top:10px"><span class="lbl">กะ<span>Shift</span></span><div class="seg" id="seg-shift"><button data-v="day">กะเช้า<small>'+BOOT.dayStart+'–'+BOOT.dayEnd+'</small></button><button data-v="night">กะดึก<small>'+BOOT.dayEnd+'–'+BOOT.dayStart+'</small></button></div></div></div>';
   h+='<div id="m-read">';
   SYS.forEach(function(s){h+='<div class="card sys" style="--c:var('+s[4]+')"><h2>'+s[1]+'<small>'+s[5]+'</small></h2><div class="row"><div><label class="lbl" for="f-'+s[2]+'">ระดับน้ำมัน<span>L</span></label><div class="unit"><input id="f-'+s[2]+'" inputmode="decimal" autocomplete="off"><i>L</i></div></div><div><label class="lbl" for="f-'+s[3]+'">อุณหภูมิ<span>°C</span></label><div class="unit"><input id="f-'+s[3]+'" inputmode="decimal" autocomplete="off"><i>°C</i></div></div></div></div>'});
+  h+='<div class="card c-drop" id="drop-card" hidden><span class="lbl">ระดับน้ำมันลดลงผิดปกติ · ระบุสาเหตุ<span>Abnormal drop</span></span><div class="drop-list" id="drop-list"></div>'+
+    '<div class="reasons" id="dropreasons">'+DROP_REASONS.map(function(r){return '<button type="button" data-v="'+r[0]+'"><i></i><span>'+r[1]+'</span></button>'}).join('')+'</div><textarea id="f-droptext" placeholder="พิมพ์สาเหตุที่ลดผิดปกติ…" maxlength="200" hidden></textarea></div>';
   h+='</div><div id="m-act" hidden><div class="card"'+(ONE_ACT?' hidden':'')+'><span class="lbl">เหตุการณ์<span>Action</span></span><div class="acts" id="seg-act">'+ACTS.map(function(a){return '<button type="button" data-v="'+a[0]+'" style="--ac:'+a[3]+'">'+a[4]+'<span>'+a[1]+'<small>'+a[2]+'</small></span></button>'}).join('')+'</div></div>'+
   '<div class="card"><span class="lbl">ระบบ<span>System</span></span><div class="seg sys3" id="seg-rsys">'+SYS.map(function(s){return '<button data-v="'+s[0]+'">'+(s[0]==='servo'?'Servo':s[0]==='auxiliary'?'Auxiliary':'Lubrication')+'</button>'}).join('')+'</div><div class="oilname" id="oilname">เลือกระบบก่อน · Select a system</div></div>'+
   '<div class="card c-tanks"><span class="lbl" id="lb-tanks">จำนวนถังที่เติม<span>Tanks</span></span><div class="stepper"><button type="button" onclick="stepT(-1)" aria-label="ลด">−</button><input id="f-tanks" inputmode="numeric" value="1" aria-label="จำนวนถัง"><button type="button" onclick="stepT(1)" aria-label="เพิ่ม">+</button></div><span class="tankunit">ถัง · tanks</span></div>'+
@@ -192,8 +209,9 @@ function form(){var ns=nowShift();st.shift=ns.shift;st.date=ns.date;var d=new Da
   segs();modeUI();recSetup();['f-before','f-after'].forEach(function(id){document.getElementById(id).addEventListener('input',leakCalc)});var t=document.getElementById('f-time');t.addEventListener('input',function(){var v=t.value.replace(/[^0-9]/g,'').slice(0,4);if(v.length>=3)v=v.slice(0,2)+':'+v.slice(2);t.value=v});
   document.querySelectorAll('input,textarea,select').forEach(function(i){i.addEventListener(i.tagName==='SELECT'?'change':'input',function(){i.classList.remove('bad');showErr('')})});
   document.getElementById('recent').addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-x]');if(b)takeBack(b.dataset.id,b.dataset.x==='edit')});
-  loadRecent();renderPend();flush(false)}
-function segs(){[['seg-shift','shift'],['seg-status','status'],['seg-mode','mode'],['seg-act','act'],['seg-rsys','rsys'],['reasons','reason']].forEach(function(p){var g=document.getElementById(p[0]);if(!g)return;[].forEach.call(g.children,function(b){b.setAttribute('aria-pressed',String(st[p[1]]===b.dataset.v));b.onclick=function(){st[p[1]]=b.dataset.v;segs();if(p[1]==='mode'||p[1]==='act'||p[1]==='rsys'||p[1]==='reason')modeUI(p[1])}})})}
+  SYS.forEach(function(s){document.getElementById('f-'+s[2]).addEventListener('input',function(){dropUI()})});['f-time','f-date'].forEach(function(id){var x=document.getElementById(id);if(x){x.addEventListener('input',function(){dropUI()});x.addEventListener('change',function(){dropUI()})}});
+  loadRecent();renderPend();flush(false);loadLast()}
+function segs(){[['seg-shift','shift'],['dropreasons','drop'],['seg-status','status'],['seg-mode','mode'],['seg-act','act'],['seg-rsys','rsys'],['reasons','reason']].forEach(function(p){var g=document.getElementById(p[0]);if(!g)return;[].forEach.call(g.children,function(b){b.setAttribute('aria-pressed',String(st[p[1]]===b.dataset.v));b.onclick=function(){st[p[1]]=b.dataset.v;segs();dropUI(p[1]==='drop');if(p[1]==='mode'||p[1]==='act'||p[1]==='rsys'||p[1]==='reason')modeUI(p[1])}})})}
 function actOf(){return ACTS.filter(function(a){return a[0]===st.act})[0]}
 function modeUI(changed){var ac=st.mode==='act';document.getElementById('m-read').hidden=ac;document.getElementById('m-act').hidden=!ac;document.getElementById('statuswrap').hidden=ac;
   var A=actOf(),t=st.act;document.getElementById('ttl').textContent=ac?actTitle(A):'บันทึกระดับน้ำมัน';
@@ -251,10 +269,14 @@ function send(){showErr('');[].forEach.call(document.querySelectorAll('.bad'),fu
     if(L!==''){if(isNaN(+L)||+L<0||+L>20000)return bad('f-'+s[2],ERR.bad_level);any=true}else if(T!=='')return bad('f-'+s[2],ERR.temp_without_level);
     if(T!==''&&(isNaN(+T)||+T<-20||+T>200))return bad('f-'+s[3],ERR.bad_temp)}
   if(!any)return bad('f-servoL',ERR.no_values);
+  var dl=drops();if(dl.length){dropUI();if(!st.drop){showErr('ระดับน้ำมันลดลงผิดปกติ — กรุณาเลือกสาเหตุ');document.getElementById('drop-card').scrollIntoView({block:'center'});return}
+    var dt=val('f-droptext');if(st.drop==='other'&&!dt)return bad('f-droptext','กรุณาพิมพ์สาเหตุที่ลดผิดปกติ');
+    r.note='ลดผิดปกติ ['+dl.map(function(x){return x.id}).join(',')+']: '+DROP_REASONS.filter(function(x){return x[0]===st.drop})[0][1]+(st.drop==='other'?' - '+dt:'');r.dropReason=st.drop}
   var m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);if(!m)return bad('f-time',ERR.bad_time);var mins=+m[1]*60+ +m[2],ds=hm(BOOT.dayStart),de=hm(BOOT.dayEnd);
   if(st.shift==='day'?!(mins>=ds&&mins<de):!(mins>=de||mins<ds))return bad('f-time',ERR.time_shift);
   if(!rec)return bad('f-rec',ERR.no_recorder);if((BOOT.recorders||[]).indexOf(rec)<0)return bad('f-rec',ERR.bad_recorder+': '+(BOOT.recorders||[]).join(', '));teamShow();if(!st.team)return bad('f-rec',ERR.bad_team);
-  LS.set('rec',rec);var q=queue();q.push(r);saveQ(q);st.replaces='';clearVals();renderPend();
+  var rts=readTs(date,time,st.shift);SYS.forEach(function(s){if(r[s[2]]!==''&&rts!=null){var p=LAST.last[s[0]];if(!p||p.ts<=rts)LAST.last[s[0]]={level:+r[s[2]],ts:rts}}});saveLast();
+  LS.set('rec',rec);var q=queue();q.push(r);saveQ(q);st.replaces='';st.drop='';var dtx=document.getElementById('f-droptext');if(dtx)dtx.value='';clearVals();segs();dropUI();renderPend();
   var b=document.getElementById('send');b.disabled=true;b.textContent='กำลังส่ง…';
   flush(true).then(function(okN){b.disabled=false;b.innerHTML=sendLabel();var sum=SYS.filter(function(s){return r[s[2]]!==''}).map(function(s){return s[0]==='servo'?'Servo '+r.servoL:(s[0]==='auxiliary'?'Aux '+r.auxL:'Lube '+r.lubL)}).join(' · ');
     if(queue().some(function(x){return x.id===r.id}))pop('เก็บไว้ในเครื่องแล้ว','ยังส่งไม่ได้ (ไม่มีสัญญาณ) ระบบจะส่งให้อัตโนมัติเมื่อมีเน็ต<br>'+esc(thDate(r.shiftDate))+' '+(r.shift==='day'?'กะเช้า':'กะดึก')+' '+r.time);
