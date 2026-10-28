@@ -42,7 +42,8 @@
   /* ---- the functions the program expects (same answers as the desktop version) ---- */
   var api = {
     storage_info: function () {
-      return desk('info').then(function (r) {
+      var p = S.infoP && Date.now() - S.infoAt < 20000 ? S.infoP : desk('info'); S.infoP = null;   // reuse the start-up check
+      return p.then(function (r) {
         if (!r || !r.ok) return { ok: false, error: (r && r.error) || 'error' };
         S.sheetUrl = r.url || '';
         return { ok: true, dir: 'Google Sheet · ' + (r.sheet || ''), file: r.url || '', exists: !!r.exists, computer: S.pc, writable: true, network: true, rev: r.rev, modified: r.modified };
@@ -174,7 +175,11 @@
     S.api = okApi(ls.get('api')) ? ls.get('api') : (okApi(conf().api) ? conf().api : '');
     S.key = ls.get('key') || ''; S.pc = ls.get('pc') || '';
     if (!S.api || !S.key || !S.pc) { panel(''); return; }
-    desk('info').then(function (r) {
+    S.infoP = desk('info'); S.infoAt = Date.now();
+    /* this browser already has the program's data → open straight away, Google is checked in the background */
+    var hasLocal = false; try { hasLocal = (JSON.parse(localStorage.getItem('oilMonitorRecords') || '[]') || []).length > 0; } catch (e) { }
+    if (hasLocal) { finish(); S.infoP.then(function (r) { if (r && !r.ok && r.error === 'bad_key') { S.key = ''; ls.set('key', ''); panel(why('bad_key')); } }, function () { }); return; }
+    S.infoP.then(function (r) {
       if (r && r.ok && r.exists) { finish(); return; }
       if (r && r.ok) { importStep(); return; }
       panel(why((r && r.error) || 'bad_reply'));

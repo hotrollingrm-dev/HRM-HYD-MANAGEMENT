@@ -1526,10 +1526,13 @@ body::before{background:
 
 /* v1.8.6 smooth mode for slow PCs */
 html.lite *,html.lite *::before,html.lite *::after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important}
-html.lite .card,html.lite .sheet,html.lite .nav,html.lite .side,html.lite .topbar,html.lite .btn,html.lite .toast,html.lite .sp-card{box-shadow:none!important}
-html.lite .card{background:var(--surface,#fff)!important;border:1px solid var(--line)}
+/* keep the look: same background, near-solid glass, light cheap shadows; quick colour fades only */
+html.lite .card,html.lite .sheet,html.lite .toast,html.lite .sp-card{background:color-mix(in srgb,var(--surface,#fff) 93%,transparent)!important;box-shadow:0 1px 2px rgba(16,24,40,.06),0 6px 16px rgba(16,24,40,.07)!important}
+html.lite .card{border:1px solid color-mix(in srgb,var(--line,#dfe3ea) 80%,transparent)}
+html.lite .btn,html.lite .nav-item,html.lite .icon-btn,html.lite .lang-opt{transition:background-color .12s ease,color .12s ease,border-color .12s ease!important}
+html.lite .btn-primary{box-shadow:0 2px 6px rgba(42,100,232,.25)!important}
 html.lite body,html.lite .app{background-attachment:scroll!important}
-html.lite .scrim-m{background:rgba(20,30,50,.45)!important}
+html.lite .scrim-m{background:rgba(20,30,50,.42)!important}
 .hist .rec{content-visibility:auto;contain-intrinsic-size:auto 66px}
 .hist-more{display:flex;justify-content:center;padding:14px 0 20px}
 .lite-row{display:flex;gap:8px;flex-wrap:wrap}.lite-opt{min-width:120px}
@@ -5254,14 +5257,16 @@ function syncMerge(remote){const b=SYNC.base||{cfg:null,oils:null,rec:new Map(),
   if(Array.isArray(remote.oils)&&_js(OILS)===b.oils)OILS=mergeOils(remote.oils);migrate();inval()}
 function syncAdopt(remote){REC=Array.isArray(remote.records)?remote.records.filter(validRec):[];EVTS=Array.isArray(remote.events)?remote.events.filter(validEvt):[];
   if(remote.config){CFG=mergeCfg(remote.config);SHIFT_CFG=CFG.shift}if(Array.isArray(remote.oils))OILS=mergeOils(remote.oils);migrate();inval()}
+/* remember which shared-file revision this PC's copy matches, so the next start can skip the download */
+function syncMark(clean){try{store.set('hrmSyncRev',String(SYNC.rev||0));store.set('hrmSyncClean',clean?'1':'0')}catch(e){}}
 function syncSaveLocal(){store.set(K_CONFIG,_js(CFG));store.set(K_OIL,_js(OILS));store.set(K_REC,_js(REC));store.set(K_EVT,_js(EVTS))}
 function syncRefreshUI(){updateSyncChip();const sl=$('#sp-sync');if(sl)sl.innerHTML=syncLineHTML();if(UI.page==='settings'){const c=$('#sync-card');if(c)c.outerHTML=syncCardHTML()}}
 function syncRender(){if($('#modal-root')&&!$('#modal-root').hidden||hasUnsaved()){SYNC.needRender=true;return}SYNC.needRender=false;render(false,false)}
 let _syncT=null;
-function syncSoon(){if(!SYNC.on)return;SYNC.pending=true;syncRefreshUI();clearTimeout(_syncT);_syncT=setTimeout(syncPush,350)}
+function syncSoon(){if(!SYNC.on)return;SYNC.pending=true;syncMark(false);syncRefreshUI();clearTimeout(_syncT);_syncT=setTimeout(syncPush,350)}
 async function syncPush(){if(!SYNC.on)return;if(SYNC.busy){clearTimeout(_syncT);_syncT=setTimeout(syncPush,400);return}SYNC.busy=true;SYNC.state='saving';syncRefreshUI();let merged=false;
   try{for(let i=0;i<4;i++){const r=await PYW().data_save(_js(dataPayload()),SYNC.rev);
-      if(r&&r.ok){SYNC.rev=r.rev;SYNC.base=syncSnapshot();SYNC.pending=false;SYNC.state='ok';SYNC.last=Date.now();SYNC.by=r.savedBy;break}
+      if(r&&r.ok){SYNC.rev=r.rev;SYNC.base=syncSnapshot();SYNC.pending=false;SYNC.state='ok';SYNC.last=Date.now();SYNC.by=r.savedBy;syncMark(true);break}
       if(r&&r.conflict){syncMerge(JSON.parse(r.text));SYNC.rev=r.rev;merged=true;continue}
       if(r&&r.busy){await new Promise(z=>setTimeout(z,600));continue}
       throw new Error((r&&r.error)||'save failed')}
@@ -5273,14 +5278,17 @@ function syncFlush(timeout){return new Promise(res=>{const t0=Date.now();clearTi
 async function syncPoll(){if(!SYNC.on||SYNC.busy)return;try{const r=await PYW().data_rev();if(!r||!r.ok){SYNC.state='offline';syncRefreshUI();return}
     if(SYNC.state==='offline'){SYNC.state='ok'}
     if(r.rev!==SYNC.rev){const ld=await PYW().data_load();if(ld&&ld.ok&&ld.text){const remote=JSON.parse(ld.text);
-        if(syncHasLocal()){syncMerge(remote);SYNC.rev=ld.rev;syncSoon()}else{syncAdopt(remote);SYNC.rev=ld.rev;SYNC.base=syncSnapshot();SYNC.last=Date.now()}
+        if(syncHasLocal()){syncMerge(remote);SYNC.rev=ld.rev;syncSoon()}else{syncAdopt(remote);SYNC.rev=ld.rev;SYNC.base=syncSnapshot();SYNC.last=Date.now();syncMark(true)}
         syncSaveLocal();syncRender()}}
     else if(SYNC.pending)syncPush();
     syncRefreshUI()}catch(e){SYNC.state='offline';syncRefreshUI()}}
 async function syncInit(){const api=PYW();if(!api||!api.storage_info){tryRestoreBackup();return}
   try{const info=await api.storage_info();SYNC.info=info;if(!info||!info.ok||!info.writable){SYNC.state='offline';tryRestoreBackup();updateSyncChip();return}
+    /* fast start: this PC already has exactly that revision → no need to download the whole file again */
+    if(info.rev&&String(info.rev)===String(store.get('hrmSyncRev'))&&store.get('hrmSyncClean')==='1'&&REC.length){SYNC.on=true;SYNC.rev=info.rev;SYNC.base=syncSnapshot();SYNC.state='ok';SYNC.last=Date.now();
+      clearInterval(SYNC.poll);SYNC.poll=setInterval(syncPoll,15000);updateSyncChip();return}
     const ld=await api.data_load();SYNC.on=true;
-    if(ld&&ld.ok&&ld.text){syncAdopt(JSON.parse(ld.text));SYNC.rev=ld.rev;SYNC.base=syncSnapshot();SYNC.state='ok';SYNC.last=Date.now();syncSaveLocal();render(false,true)}
+    if(ld&&ld.ok&&ld.text){syncAdopt(JSON.parse(ld.text));SYNC.rev=ld.rev;SYNC.base=syncSnapshot();SYNC.state='ok';SYNC.last=Date.now();syncSaveLocal();syncMark(true);render(false,true)}
     else{SYNC.rev=0;SYNC.base=null;await syncPush()}   // first PC: the shared file starts from this PC's data
     clearInterval(SYNC.poll);SYNC.poll=setInterval(syncPoll,15000)}
   catch(e){console.error(e);SYNC.state='offline';tryRestoreBackup()}updateSyncChip()}
