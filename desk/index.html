@@ -5513,7 +5513,10 @@ Object.assign(A,{msSave:()=>msSave(),msRevert:()=>{render(false,false)},msStatus
 
 /* ================= mobile entry (Google Apps Script + Sheets): pull new phone readings ================= */
 const MOB={busy:false,last:0,lastN:0,err:'',timer:null};
-const mobCfg=()=>{const d={on:false,url:'',key:'',team:'',qrCode:false,page:'https://hrm-hyd-management.vercel.app/'};if(!CFG.mobile||typeof CFG.mobile!=='object')CFG.mobile={};if(/^https:\/\/hotrollingrm-dev\.github\.io\/HRM-HYD-MANAGEMENT\/?$/i.test(CFG.mobile.page||''))CFG.mobile.page=d.page;for(const k in d)if(CFG.mobile[k]==null)CFG.mobile[k]=d[k];return CFG.mobile};
+const mobCfg=()=>{const d={on:false,url:'',key:'',team:'',qrCode:false,page:'https://hrm-hyd-management.vercel.app/'};if(!CFG.mobile||typeof CFG.mobile!=='object')CFG.mobile={};if(/^https:\/\/hotrollingrm-dev\.github\.io\/HRM-HYD-MANAGEMENT\/?$/i.test(CFG.mobile.page||''))CFG.mobile.page=d.page;for(const k in d)if(CFG.mobile[k]==null)CFG.mobile[k]=d[k];
+  /* web version: the phone data is in the same Google Sheet the program signed in to → always use that link + SYNC_KEY and pull automatically */
+  try{const api=PYW(),w=api&&api.web_conf&&api.web_conf();if(w&&w.api&&w.key){const m=CFG.mobile;if(m.url!==w.api||m.key!==w.key||!m.on){m.url=w.api;m.key=w.key;m.on=true}}}catch(e){}
+  return CFG.mobile};
 async function mobCall(params){const c=mobCfg();const url=c.url.trim()+(c.url.includes('?')?'&':'?')+Object.entries(params).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
   const api=PYW();let text;
   if(api&&api.mobile_fetch){const r=await api.mobile_fetch(url);if(!r||!r.ok)throw new Error((r&&r.error)||'network');text=r.text}
@@ -5639,7 +5642,7 @@ document.addEventListener('mousedown',e=>{const b=e.target.closest&&e.target.clo
 window.addEventListener('resize',sgPos);
 document.addEventListener('scroll',e=>{if(_sg&&!(e.target&&e.target.closest&&e.target.closest('.rec-sg')))sgPos()},true);
 setupIcons();try{$('#brand-mark').innerHTML=`<img class="app-icon" src="${APP_ICON}" alt="HRM Hydraulic" width="40" height="40">`}catch(e){}
-let _syncStarted=false;const startSync=()=>{hrmReady();if(BOOT_OK&&!_syncStarted){_syncStarted=true;syncInit()}};
+let _syncStarted=false;const startSync=()=>{hrmReady();if(BOOT_OK&&!_syncStarted){_syncStarted=true;Promise.resolve(syncInit()).then(()=>setTimeout(()=>mobPull(false),800))}};
 window.addEventListener('pywebviewready',startSync);
 (function boot(){
   try{load()}catch(e){hrmLog('boot load: '+((e&&e.stack)||e));
