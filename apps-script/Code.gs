@@ -53,6 +53,7 @@ function setup() {
   if (!cfg) cfg = ss.insertSheet(CONFIG);
   if (cfg.getLastRow() === 0) {
     const code = String(Math.floor(100000 + Math.random() * 900000));
+    cfg.getRange('B2:B6').setNumberFormat('@');
     cfg.getRange(1, 1, 6, 3).setValues([
       ['Setting', 'Value', 'คำอธิบาย / Note'],
       ['TEAM_CODE', code, 'รหัสทีม 6 หลักขึ้นไป ให้พนักงานกรอกครั้งแรกในมือถือ (เปลี่ยนได้ตลอด)'],
@@ -120,8 +121,33 @@ function cfg_() {
   const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG);
   if (!sh) throw new Error('Run setup() first');
   const o = {};
-  sh.getRange(2, 1, Math.max(1, sh.getLastRow() - 1), 2).getDisplayValues().forEach(r => { if (r[0]) o[String(r[0]).trim()] = String(r[1]).trim(); });
+  sh.getRange(2, 1, Math.max(1, sh.getLastRow() - 1), 2).getDisplayValues().forEach(r => { if (r[0]) o[String(r[0]).trim()] = String(r[1]).trim();
+    if (/^DAY_(START|END)$/.test(String(r[0]).trim())) o[String(r[0]).trim()] = timeCell_(r[1]); });
   return o;
+}
+/* Google Sheets turns "2026-10-28" / "15:00" into real dates and times, and shows them in the sheet's own format
+ * (e.g. 10/28/2026, 15:00:00). These helpers always give back yyyy-MM-dd and HH:mm. */
+const isDate_ = v => Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v);
+function dateCell_(raw, disp) {
+  if (isDate_(raw)) return Utilities.formatDate(raw, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss').slice(0, 10);
+  return normDate_(disp);
+}
+function timeCell_(disp) {
+  const m = /(\d{1,2})[:.](\d{2})(?::\d{2})?\s*(AM|PM|am|pm)?/.exec(String(disp || ''));
+  if (!m) return String(disp || '');
+  let h = +m[1]; if (m[3]) { const pm = /pm/i.test(m[3]); if (pm && h < 12) h += 12; if (!pm && h === 12) h = 0; }
+  return ('0' + h).slice(-2) + ':' + m[2];
+}
+/* read rows as text with shiftDate / time made safe */
+function rows_(rng, head) {
+  const raw = rng.getValues(), disp = rng.getDisplayValues(), iD = head.indexOf('shiftDate'), iT = head.indexOf('time');
+  return disp.map((row, r) => { const o = row.slice(); if (iD >= 0) o[iD] = dateCell_(raw[r][iD], row[iD]); if (iT >= 0) o[iT] = timeCell_(row[iT]); return o; });
+}
+/* append a row with date / shift / time stored as plain text (columns 3–5) so Sheets does not convert them */
+function appendText_(sh, row) {
+  const r = sh.getLastRow() + 1;
+  sh.getRange(r, 3, 1, 3).setNumberFormat('@');
+  sh.getRange(r, 1, 1, row.length).setValues([row]);
 }
 const hm_ = s => { const p = String(s || '0:0').split(':').map(Number); return (p[0] || 0) * 60 + (p[1] || 0); };
 
@@ -286,12 +312,12 @@ function phoneLast(code) {
   const last = {}, put = (k, level, ts) => { if (!isFinite(level) || !isFinite(ts)) return; if (!last[k] || ts > last[k].ts) last[k] = { level: Math.round(Number(level)), ts: ts }; };
   try { const txt = dbRead_(); if (txt) (JSON.parse(txt).records || []).forEach(r => { if (r && r.systemType && r.level != null) put(r.systemType, Number(r.level), Number(r.ts)); }); } catch (e) { }
   const ss = SpreadsheetApp.getActiveSpreadsheet(), ib = ss.getSheetByName(INBOX);
-  if (ib && ib.getLastRow() > 1) ib.getRange(2, 1, ib.getLastRow() - 1, HEAD.length).getDisplayValues().forEach(v => {
+  if (ib && ib.getLastRow() > 1) rows_(ib.getRange(2, 1, ib.getLastRow() - 1, HEAD.length), HEAD).forEach(v => {
     const ts = tsBkk_(v[2], v[4], v[3], c); if (ts == null) return;
     SYS.forEach(x => { const L = String(v[HEAD.indexOf(x[1])]).replace(/,/g, '').trim(); if (L !== '') put(x[0], Number(L), ts); });
   });
   const ev = ss.getSheetByName(EVENTS);
-  if (ev && ev.getLastRow() > 1) ev.getRange(2, 1, ev.getLastRow() - 1, HEAD_EV.length).getDisplayValues().forEach(v => {
+  if (ev && ev.getLastRow() > 1) rows_(ev.getRange(2, 1, ev.getLastRow() - 1, HEAD_EV.length), HEAD_EV).forEach(v => {
     const ts = tsBkk_(v[HEAD_EV.indexOf('shiftDate')], v[HEAD_EV.indexOf('time')], v[HEAD_EV.indexOf('shift')], c), a = String(v[HEAD_EV.indexOf('afterL')]).replace(/,/g, '').trim();
     if (ts != null && a !== '') put(v[HEAD_EV.indexOf('system')], Number(a), ts);
   });
@@ -312,18 +338,19 @@ function api_(p) {
   if (p.action === 'ping') return { ok: true, rows: Math.max(0, sh.getLastRow() - 1), machine: c.MACHINE || '', team: c.TEAM_CODE || '' };
   if (p.action === 'pull') {
     const n = sh.getLastRow() - 1;
-    const vals = n > 0 ? sh.getRange(2, 1, n, HEAD.length).getDisplayValues() : [];
+    const again = Number(p.again) > 0 ? Utilities.formatDate(new Date(Date.now() - Number(p.again) * 864e5), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss').slice(0, 10) : '';
+    const vals = n > 0 ? rows_(sh.getRange(2, 1, n, HEAD.length), HEAD) : [];
     const rows = [];
     for (const v of vals) {
-      if (v[16]) continue;                                   // already imported
+      if (v[16] && !(again && v[2] >= again)) continue;     // already imported (unless asked to pull again)
       const o = {}; HEAD.forEach((h, i) => o[h] = v[i]); rows.push(o);
       if (rows.length >= 500) break;
     }
     const ev = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(EVENTS);
     const events = [];
     if (ev && ev.getLastRow() > 1) {
-      ev.getRange(2, 1, ev.getLastRow() - 1, HEAD_EV.length).getDisplayValues().forEach(v => {
-        if (v[IMP_EV] || events.length >= 300) return;
+      rows_(ev.getRange(2, 1, ev.getLastRow() - 1, HEAD_EV.length), HEAD_EV).forEach(v => {
+        if ((v[IMP_EV] && !(again && v[HEAD_EV.indexOf('shiftDate')] >= again)) || events.length >= 300) return;
         const o = {}; HEAD_EV.forEach((h, i) => o[h] = v[i]); events.push(o);
       });
     }
@@ -331,7 +358,7 @@ function api_(p) {
     const logs = [];
     if (lg && lg.getLastRow() > 1) {
       const iI = HEAD_LOG.indexOf('imported');
-      lg.getRange(2, 1, lg.getLastRow() - 1, HEAD_LOG.length).getDisplayValues().forEach(v => {
+      rows_(lg.getRange(2, 1, lg.getLastRow() - 1, HEAD_LOG.length), HEAD_LOG).forEach(v => {
         if (v[iI] || logs.length >= 200) return;
         const o = {}; HEAD_LOG.forEach((h, i) => { if (h !== 'data') o[h] = v[i]; }); logs.push(o);
       });
@@ -465,7 +492,7 @@ function shiftMissing_(shiftDate, shift) {
   const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(INBOX);
   if (sh && sh.getLastRow() > 1) {
     const iD = HEAD.indexOf('shiftDate'), iS = HEAD.indexOf('shift');
-    sh.getRange(2, 1, sh.getLastRow() - 1, HEAD.length).getDisplayValues().forEach(v => {
+    rows_(sh.getRange(2, 1, sh.getLastRow() - 1, HEAD.length), HEAD).forEach(v => {
       if (normDate_(v[iD]) !== shiftDate || v[iS] !== shift) return;
       SYS.forEach(x => { if (String(v[HEAD.indexOf(x[1])]).trim() !== '') have[x[0]] = 1; });
     });
@@ -618,8 +645,7 @@ function submitReading(code, r) {
       r.shiftDate, r.shift, r.time, String(r.recorder).trim().toUpperCase(), r.team, r.status,
       num(r.servoL), num(r.servoT), num(r.auxL), num(r.auxT), num(r.lubL), num(r.lubT),
       String(r.note || '').slice(0, 200), String(r.device || '').slice(0, 80), ''];
-    sh.appendRow(row);
-    sh.getRange(sh.getLastRow(), 3, 1, 3).setNumberFormat('@');
+    appendText_(sh, row);
     if (r.replaces) linkReplaced_(String(r.replaces), r.id);
     return { ok: true, id: r.id };
   } finally { lock.releaseLock(); }
@@ -641,17 +667,16 @@ function submitEvent(code, e) {
     }
     const ty = e.type || 'refill', lv = ty !== 'maint', tk = ty === 'refill' || ty === 'oil_change';
     const txt = (v, n) => String(v || '').trim().slice(0, n || 200);
-    sh.appendRow([e.id, Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'),
+    appendText_(sh, [e.id, Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'),
       e.shiftDate, e.shift, e.time, String(e.recorder).trim().toUpperCase(), e.team, e.system, ty, tk ? Math.round(Number(e.tanks)) : '',
       lv ? Number(e.beforeL) : '', lv ? Number(e.afterL) : '', tk ? e.reason : '', tk ? txt(e.reasonText) : '', txt(e.device, 80), '',
       ty === 'oil_change' ? Number(e.drainedL) : '', txt(e.location, 120), ty === 'leak' ? txt(e.cause) : '', ty === 'leak' || ty === 'maint' ? txt(e.action) : '']);
-    sh.getRange(sh.getLastRow(), 3, 1, 3).setNumberFormat('@');
     if (e.replaces) linkReplaced_(String(e.replaces), e.id);
     return { ok: true, id: e.id };
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.8.5';
+const SERVER_VER = 'v1.8.6';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   return { ok: true, version: SERVER_VER, time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') };
@@ -687,7 +712,7 @@ function cancelEntry(code, id, why, by) {
         if (String(ids[i][0]) !== id) continue;
         if (sh.getRange(i + 2, w[1]).getValue()) return { ok: false, error: 'already_imported' };
         const head = w[0] === INBOX ? HEAD : HEAD_EV, kind = w[0] === INBOX ? 'reading' : 'event';
-        const vals = sh.getRange(i + 2, 1, 1, head.length).getDisplayValues()[0], o = {};
+        const vals = rows_(sh.getRange(i + 2, 1, 1, head.length), head)[0], o = {};
         head.forEach((h, j) => o[h] = vals[j]);
         logSheet_().appendRow(['LOG-' + Utilities.getUuid().replace(/-/g, '').slice(0, 20), Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'),
           why === 'edit' ? 'edit' : 'cancel', id, kind === 'reading' ? 'reading' : (o.type || 'refill'), o.recorder, o.team, o.shiftDate, o.shift, o.time,
@@ -734,7 +759,7 @@ function recent(code) {
     if (!sheet) return;
     const n = sheet.getLastRow() - 1; if (n < 1) return;
     const k = Math.min(n, 8);
-    sheet.getRange(n - k + 2, 1, k, head.length).getDisplayValues().forEach(v => {
+    rows_(sheet.getRange(n - k + 2, 1, k, head.length), head).forEach(v => {
       const o = {}; head.forEach((h, i) => { if (h === 'kind') o.entryKind = v[i]; else if (h !== 'device' && h !== 'data') o[h] = v[i]; }); o.kind = kind; if (!o.receivedAt) o.receivedAt = o.at; out.push(o);
     });
   };

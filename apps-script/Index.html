@@ -134,7 +134,7 @@ function drops(){var ts=readTs(document.getElementById('f-date')?document.getEle
 function dropUI(clicked){var c=document.getElementById('drop-card');if(!c)return;var l=st.mode==='act'?[]:drops();c.hidden=!l.length;if(!l.length){return}
   document.getElementById('drop-list').innerHTML=l.map(function(x){return '<div class="drop-it"><b>'+esc(x.name)+'</b><span>'+x.from+' → '+(x.from-x.drop)+' L · ลด '+x.drop+' L ใน '+x.hrs+' ชม. ('+x.rate+' L/ชม.)</span></div>'}).join('');
   var tx=document.getElementById('f-droptext');tx.hidden=st.drop!=='other';if(clicked&&st.drop==='other')tx.focus()}
-var PAGE_VER='v1.8.5';
+var PAGE_VER='v1.8.6';
 /* the team comes from the recorder's name (Settings → Members & teams on the PC) */
 function teamOf(n){var k=String(n||'').toUpperCase(),l=BOOT.members||[];for(var i=0;i<l.length;i++)if(l[i].name===k)return l[i].team||'';return ''}
 function teamShow(){var t=teamOf(document.getElementById('f-rec')?document.getElementById('f-rec').value:''),el=document.getElementById('team-badge');st.team=t;if(el){el.textContent=t?'ทีม '+t+' · Team '+t:'ทีมจะขึ้นเองตามชื่อ';el.className='team-badge'+(t?' on':'')}}
