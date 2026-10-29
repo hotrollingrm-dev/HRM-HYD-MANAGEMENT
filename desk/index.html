@@ -4656,7 +4656,7 @@ function renderNav(){$('#nav').innerHTML=PAGES.map(k0=>{const k=k0,nk=k0==='dash
   $('#side-machine').innerHTML=`${ico('run',44)}<span class="lbl">${biRaw(esc(CFG.machine),S2('systemsN'))}</span>`}
 function clockHTML(){const n=Date.now();return `<b>${fT(n)}</b><span>${fDth(n)}</span>`}
 function renderHeader(){const runN=SYS_IDS.filter(k=>{const r=lastRec(k);return r&&r.status==='run'}).length;
-  $('#header').innerHTML=`<div class="ttl">${L(UI.page)}</div>${UI.page==='dashboard'?monthBtn():''}<span class="pill ${runN?'run':'stop'} sm">${ico(runN?'run':'idle',30)}${L('runningN',null,{n:runN})}</span>${shiftPill(Date.now(),true)}<span id="sync-chip" class="sync-chip" hidden></span><button type="button" id="mob-chip" class="sync-chip mob-chip" data-act="mobChip" hidden></button><div class="clock" id="clock">${clockHTML()}</div><span class="hdr-sep"></span>
+  $('#header').innerHTML=`<div class="ttl">${L(UI.page)}</div>${UI.page==='dashboard'?monthBtn():''}<span class="pill ${runN?'run':'stop'} sm">${ico(runN?'run':'idle',30)}${L('runningN',null,{n:runN})}</span>${shiftPill(Date.now(),true)}<span id="sync-chip" class="sync-chip" hidden data-act="syncNow" role="button" tabindex="0" style="cursor:pointer"></span><button type="button" id="mob-chip" class="sync-chip mob-chip" data-act="mobChip" hidden></button><div class="clock" id="clock">${clockHTML()}</div><span class="hdr-sep"></span>
   <button class="icon-btn" data-act="fullscreen" aria-label="${esc(TS('fullscreen'))}" title="${esc(TS('fullscreen'))}">${li(document.fullscreenElement?'shrink':'expand',24)}</button>
   <div class="hdr-actions"><button class="btn btn-glass" data-act="openEventPicker">${li('plus',24)}${L('addEvent')}</button><button class="btn btn-primary" data-act="openRecord">${li('plus',24)}${L('recordOil')}</button></div>`}
 
@@ -5638,6 +5638,10 @@ function mobChipUpdate(){const b=$('#mob-chip');if(!b)return;const c=mobCfg();if
   const st=MOB.busy?'busy':MOB.err?'off':MOB.last?'ok':'local';b.className='sync-chip mob-chip '+st;
   const t=MOB.busy?T('mobChipBusy'):MOB.err?T('mobChipErr'):MOB.last?T('mobChipOk',{t:fT(MOB.last),n:MOB.lastN||0}):T('mobChipWait');
   b.title=(MOB.err?MOB.err+' · ':'')+TS('mobChipTip');b.innerHTML=`<i></i><span class="mc-t">${esc(t)}</span>`}
+/* refresh right away: when the tablet / PC wakes up or the window comes back, and when the status chips are tapped */
+let _rfAt=0;function refreshNow(force){if(!force&&Date.now()-_rfAt<8000)return;_rfAt=Date.now();try{const api=PYW();if(api&&api.rev_reset)api.rev_reset()}catch(e){}if(SYNC.on)syncPoll();mobPull(!!force)}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshNow(false)});
+window.addEventListener('focus',()=>refreshNow(false));window.addEventListener('pageshow',e=>{if(e.persisted)refreshNow(false)});window.addEventListener('online',()=>refreshNow(true));
 function mobRefreshUI(){mobChipUpdate();const c=$('#mob-card');if(c&&UI.page==='settings'){const s=$('#mob-status');if(s)s.innerHTML=mobStatusHTML()}}
 function mobStatusHTML(){const c=mobCfg();if(!c.url||!c.key)return `<span class="sync-chip local"><i></i>${L('mobOff')}</span>`;
   if(MOB.busy)return `<span class="sync-chip busy"><i></i>${L('mobPulling')}</span>`;if(MOB.err)return `<span class="sync-chip off"><i></i>${L('mobError')}</span> <span class="hint">${esc(MOB.err)}</span>`;
@@ -5660,7 +5664,7 @@ function mobReadForm(){const c=mobCfg();const u=$('#mob-url'),k=$('#mob-key'),o=
 Object.assign(A,{
   mobTest:async()=>{mobReadForm();const c=mobCfg();if(!c.url||!c.key){toast('abnormal','mobNotSet','');return}try{const o=await mobCall({action:'ping',key:c.key});if(o.team)c.team=String(o.team);mobSendNames(true);saveAll();syncSoon();savedPop('brand','mobTestOk',esc(T('mobTestOkD',{n:o.rows,m:o.machine||''})));MOB.err='';if(UI.page==='settings'){const card=$('#mob-card');if(card)card.outerHTML=mobCardHTML()}}catch(e){MOB.err=String(e.message||e);mobRefreshUI();toast('abnormal','mobFail',esc(T('mobErr_'+MOB.err)!=='mobErr_'+MOB.err?T('mobErr_'+MOB.err):MOB.err))}},
   zoomOpen:t=>zoomOpen(t.dataset.sys),zoomShift:t=>{ZM.shift=t.dataset.v;zoomDraw()},zoomSys:t=>{ZM.id=t.dataset.sys;$('#zv-chart').dataset.sys=ZM.id;zoomDraw()},zoomExport:t=>zoomExport(t,t.dataset.k),zoomClose:()=>zoomClose(),zoomN:t=>zoomSet(+t.dataset.n||ZM.days.length),zoomPan:t=>{ZM.a+=(+t.dataset.d)*Math.max(1,Math.round(ZM.n/2));zoomDraw()},
-  mobPullNow:()=>{mobReadForm();mobPull(true)},mobChip:()=>{if(MOB.err){UI.page='settings';saveUI();render(true,true);setTimeout(()=>{const c=$('#mob-card');if(c)c.scrollIntoView({block:'center'})},200)}else mobPull(true)},mobPullAgain:()=>{mobReadForm();mobPull(true,45)},
+  syncNow:()=>refreshNow(true),mobPullNow:()=>{mobReadForm();mobPull(true)},mobChip:()=>{if(MOB.err){UI.page='settings';saveUI();render(true,true);setTimeout(()=>{const c=$('#mob-card');if(c)c.scrollIntoView({block:'center'})},200)}else mobPull(true)},mobPullAgain:()=>{mobReadForm();mobPull(true,45)},
   mobQrToggle:t=>{mobReadForm();const c=mobCfg();c.qrCode=!!t.checked;saveAll();syncSoon();const card=$('#mob-card');if(card)card.outerHTML=mobCardHTML()},
   mobPrintQR:()=>{const c=mobCfg();const w=window.open('','_blank');if(!w)return;const inst=c.qrCode&&c.team;const chk=mobPhoneUrl('check=1');
     w.document.write(`<!doctype html><meta charset="utf-8"><title>QR</title><body style="font-family:Thonburi,Tahoma,sans-serif;text-align:center;padding:28px;color:#111722"><h2 style="margin:0 0 4px">HRM Hydraulic · บันทึกระดับน้ำมันด้วยมือถือ</h2><div style="width:300px;margin:16px auto">${mobQR(mobQrUrl())}</div><p style="font-size:18px;margin:0 0 14px"><b>${inst?'สแกนแล้วเข้าใช้ได้ทันที · Scan and start':'สแกนแล้วใส่รหัสทีม · Scan, then enter the team code'}</b></p>

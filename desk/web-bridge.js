@@ -49,6 +49,7 @@
         return { ok: true, dir: 'Google Sheet · ' + (r.sheet || ''), file: r.url || '', exists: !!r.exists, computer: S.pc, writable: true, network: true, rev: r.rev, modified: r.modified };
       }, function (e) { return { ok: false, error: e.message }; });
     },
+    rev_reset: function () { S.revAt = 0; },   // next data_rev asks Google straight away
     web_conf: function () { return { api: S.api, key: S.key }; },   // the program pulls phone entries from the same Web App
     data_load: function () { return desk('load').catch(function (e) { return { ok: false, error: e.message }; }); },
     data_rev: function () {
