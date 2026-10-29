@@ -1,5 +1,5 @@
 /* HRM Hydraulic phone page: works without signal (opens from cache, readings wait in the phone's queue) */
-var CACHE = 'hrm-desk-v22';
+var CACHE = 'hrm-desk-v23';
 var FILES = ['./', 'index.html', '../config.js', 'web-bridge.js', 'manifest.webmanifest', 'icon-192.png', 'libs/xlsx.full.min.js', 'libs/html2canvas.min.js', 'libs/jspdf.umd.min.js'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); }).then(function () { return self.skipWaiting(); }));

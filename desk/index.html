@@ -4308,7 +4308,7 @@ liteApply(liteMode());
 const TAB_KEY='hrmTabMode';
 function tabMode(){try{return localStorage.getItem(TAB_KEY)||'auto'}catch(e){return 'auto'}}
 const tabOn=()=>document.documentElement.classList.contains('tab');
-function tabApply(m){m=m||tabMode();const h=document.documentElement,w=innerWidth;const on=m==='on'||(m==='auto'&&matchMedia('(pointer:coarse)').matches&&w>=600&&w<=1500);
+function tabApply(m){m=m||tabMode();const h=document.documentElement,w=innerWidth;const touch=matchMedia('(pointer:coarse)').matches||matchMedia('(any-pointer:coarse)').matches||(navigator.maxTouchPoints||0)>1;const on=m==='on'||(m==='auto'&&touch&&w>=600&&w<=1500);
   h.classList.toggle('tab',on);h.classList.toggle('tab-p',on&&innerHeight>w);return on}
 tabApply();window.addEventListener('resize',()=>tabApply());
 const rotaCfg=()=>{const r=CFG&&CFG.rota;return r&&/^\d{4}-\d{2}-\d{2}$/.test(r.start||'')&&Array.isArray(r.days)&&r.days.length?r:null};
@@ -5401,7 +5401,7 @@ const A={
   evSys:t=>{const g=$('#f-sys');g.dataset.v=t.dataset.v;pressGroup(g,t);const lr=lastRec(t.dataset.v);const b=$('#e-before');if(b&&lr&&!$('#evForm').dataset.id){b.value=Math.round(lr.level);const af=$('#e-after');if(af)af.dataset.manual=''}if($('#e-level')&&lr)$('#e-level').value=Math.round(lr.level);
     const og=$('#e-oil');if(og){og.dataset.v=SYS_OIL[t.dataset.v];$('#e-oilname').textContent=oilOf(SYS_OIL[t.dataset.v]).name}recalc()},
   pickOil:t=>{const g=$('#e-oil');g.dataset.v=t.dataset.v;pressGroup(g,t);recalc()},
-  delRecord:t=>{const r=REC.find(x=>x.id===t.dataset.id);if(!r)return;confirmBox('delRecordQ',`${sysTag(r.systemType,true)} <span class="num">${fDth(r.ts)} ${fT(r.ts)} · ${fLit(r.level)} L</span><p class="hint">${TS('cantUndo')}</p>`,'delete',()=>{REC=REC.filter(x=>x.id!==r.id);EVTS.forEach(e=>{if(e.recIds)e.recIds=e.recIds.filter(i=>i!==r.id)});commit();toast('adjust','deleted',esc(T('short_'+r.systemType))+' · '+fT(r.ts))})},
+  delRecord:t=>{const r=REC.find(x=>x.id===t.dataset.id);if(!r)return;confirmBox('delRecordQ',`${sysTag(r.systemType,true)} <span class="num">${fDth(r.ts)} ${fT(r.ts)} · ${fLit(r.level)} L</span><p class="hint">${TS('cantUndo')}</p>`,'delete',()=>{goneAdd([r.id]);REC=REC.filter(x=>x.id!==r.id);EVTS.forEach(e=>{if(e.recIds)e.recIds=e.recIds.filter(i=>i!==r.id)});commit();toast('adjust','deleted',esc(T('short_'+r.systemType))+' · '+fT(r.ts))})},
   okConfirm:()=>{const f=pendingOk;pendingOk=null;closeModal();if(f)f()},closeModal:()=>closeModal(),
   stepLvl:t=>{const i=$('#f-level');i.value=Math.max(0,Math.round((parseFloat(i.value)||0)+(+t.dataset.d)));syncLvl('num')},
   setStatus:t=>{const g=$('#f-status');g.dataset.v=t.dataset.v;pressGroup(g,t)},
@@ -5409,7 +5409,7 @@ const A={
   stepCnt:t=>{const i=$('#e-count');i.value=Math.max(1,(parseInt(i.value)||0)+(+t.dataset.d));const af=$('#e-after');if(af&&!$('#evForm').dataset.id)af.dataset.manual='';recalc()},
   saveEvent:()=>saveEvent(),evDetail:t=>detailModal(t.dataset.id),selEv:t=>{UI.selEv=t.dataset.id;render(false,false)},
   editEvent:t=>{const e=EVTS.find(x=>x.id===t.dataset.id);if(e)evForm(e.eventType,e.id)},
-  delEvent:t=>{const e=EVTS.find(x=>x.id===t.dataset.id);if(!e)return;const n=(e.recIds||[]).length;confirmBox('delEventQ',`${sysTag(e.systemType,true)} <b>${T('ev_'+e.eventType)}</b> <span class="num">${fDth(e.ts)} ${fT(e.ts)}</span>${n?`<p>${T('delLinked',{n})}<br><span class="hint">${S2('delLinked',{n})}</span></p>`:''}<p class="hint">${TS('cantUndo')}</p>`,'delete',()=>{EVTS=EVTS.filter(x=>x.id!==e.id);if(n)REC=REC.filter(r=>!e.recIds.includes(r.id));commit();toast('adjust','deleted',T('ev_'+e.eventType))})},
+  delEvent:t=>{const e=EVTS.find(x=>x.id===t.dataset.id);if(!e)return;const n=(e.recIds||[]).length;confirmBox('delEventQ',`${sysTag(e.systemType,true)} <b>${T('ev_'+e.eventType)}</b> <span class="num">${fDth(e.ts)} ${fT(e.ts)}</span>${n?`<p>${T('delLinked',{n})}<br><span class="hint">${S2('delLinked',{n})}</span></p>`:''}<p class="hint">${TS('cantUndo')}</p>`,'delete',()=>{goneAdd([e.id].concat(e.recIds||[]));EVTS=EVTS.filter(x=>x.id!==e.id);if(n)REC=REC.filter(r=>!e.recIds.includes(r.id));commit();toast('adjust','deleted',T('ev_'+e.eventType))})},
   confirmAbn:t=>confirmAbnModal(t.dataset.id),saveAbn:()=>saveAbn(),
   abnV:t=>{const g=$('#abn-v');g.dataset.v=t.dataset.v;pressGroup(g,t);$('#abn-leak').hidden=t.dataset.v!=='leak'},
   month:t=>{const d=+t.dataset.d;const n=new Date();if(d===0){UI.month=n.getFullYear()+'-'+pad(n.getMonth()+1)}else{const [y,m]=UI.month.split('-').map(Number);const nd=new Date(y,m-1+d,1);if(nd>n)return;UI.month=nd.getFullYear()+'-'+pad(nd.getMonth()+1)}render(false,true)},
@@ -5480,6 +5480,7 @@ function syncMerge(remote){const b=SYNC.base||{cfg:null,oils:null,rec:new Map(),
     loc.forEach(x=>{if(base.get(x.id)!==_js(x))out.set(x.id,x)});base.forEach((v,id)=>{if(!ids.has(id))out.delete(id)});return [...out.values()]};
   REC=items(REC,remote.records,b.rec);EVTS=items(EVTS,remote.events,b.evt);
   if(remote.config&&_js(CFG)===b.cfg){CFG=mergeCfg(remote.config);SHIFT_CFG=CFG.shift}
+  if(remote.config&&Array.isArray(remote.config.gone)){const g=new Set(CFG.gone||[]);remote.config.gone.forEach(x=>g.add(x));CFG.gone=[...g].slice(-400)}
   if(Array.isArray(remote.oils)&&_js(OILS)===b.oils)OILS=mergeOils(remote.oils);migrate();inval()}
 function syncAdopt(remote){REC=Array.isArray(remote.records)?remote.records.filter(validRec):[];EVTS=Array.isArray(remote.events)?remote.events.filter(validEvt):[];
   if(remote.config){CFG=mergeCfg(remote.config);SHIFT_CFG=CFG.shift}if(Array.isArray(remote.oils))OILS=mergeOils(remote.oils);migrate();inval()}
@@ -5668,9 +5669,12 @@ async function mobCall(params){const c=mobCfg();const url=c.url.trim()+(c.url.in
 function mobRowTs(row){const m=/^(\d{1,2}):(\d{2})/.exec(String(row.time||''));const d=parseYmd(String(row.shiftDate||''));if(!m||isNaN(d))return null;
   const mins=+m[1]*60+ +m[2];const base=(row.shift==='night'&&mins<hm(SHIFT_CFG.dayStart))?sod(d+DAY+2*H):d;return base+mins*MIN}
 /* rows → records (ids are stable: MOB-<row id>-<system>, so pulling twice or from two PCs never duplicates) */
+/* phone entries deleted on any PC are remembered (shared via the config) so re-reading recent phone rows never brings them back */
+function goneAdd(ids){const g=new Set(CFG.gone||[]);ids.filter(i=>String(i).startsWith('MOB-')).forEach(i=>g.add(String(i)));CFG.gone=[...g].slice(-400)}
+const isGone=id=>(CFG.gone||[]).includes(id);
 function mobImport(rows){const have=new Set(REC.map(r=>r.id));let n=0;const sysCols={servo:['servoL','servoT'],auxiliary:['auxL','auxT'],lubrication:['lubL','lubT']};const found=[];
   rows.forEach(row=>{const ts=mobRowTs(row);if(ts==null)return;
-    SYS_IDS.forEach(id=>{const [lc,tc]=sysCols[id];const L=String(row[lc]??'').replace(/,/g,'').trim();if(L===''||isNaN(+L))return;const rid='MOB-'+row.id+'-'+id;if(have.has(rid))return;
+    SYS_IDS.forEach(id=>{const [lc,tc]=sysCols[id];const L=String(row[lc]??'').replace(/,/g,'').trim();if(L===''||isNaN(+L))return;const rid='MOB-'+row.id+'-'+id;if(have.has(rid)||isGone(rid))return;
       const tv=String(row[tc]??'').trim();const dm=/^ลดผิดปกติ \[([a-z,]+)\]: ?(.*)$/.exec(String(row.note||'')),dropWhy=dm&&dm[1].split(',').includes(id)?dm[2]:'';
       const r=makeRec(id,ts,+L,row.status==='stop'?'stop':'run',normRec(row.recorder),T('fromMobile')+(dropWhy?' · ลดผิดปกติ: '+dropWhy:''),false,teamOf(row.recorder)||(['A','B','C'].includes(row.team)?row.team:''),tv===''||isNaN(+tv)?null:+tv);
       r.id=rid;r.source='mobile';REC.push(r);have.add(rid);n++;const f=detectFor(r);if(f)found.push([f,id]);
@@ -5684,7 +5688,7 @@ function mobImportLogs(list){CFG.mobileLog=Array.isArray(CFG.mobileLog)?CFG.mobi
 function mobLogHTML(){const l=Array.isArray(CFG.mobileLog)?CFG.mobileLog:[];
   return `<details class="mob-log"${l.length?'':' '}><summary>${L('mobLogTitle')} <span class="badge">${l.length}</span></summary>${l.length?`<p class="hint">${T('mobLogHint')}<br>${S2('mobLogHint')}</p><div class="mob-log-t"><table><thead><tr><th>${L('mobLogAt')}</th><th></th><th>${L('mobLogItem')}</th><th>${L('operator')}</th><th>${L('mobLogBy')}</th></tr></thead><tbody>${l.slice(0,60).map(x=>`<tr><td class="num">${esc(/^\d{4}-\d{2}-\d{2}/.test(x.at)?fDs(parseYmd(x.at.slice(0,10)))+' '+x.at.slice(11,16):x.at)}</td><td><span class="ml-b ${x.action}">${L(x.action==='edit'?'mobLogEdit':'mobLogCancel')}</span></td><td><b class="num">${esc(x.shiftDate?fDs(parseYmd(x.shiftDate)):'')} ${esc(T(x.shift==='night'?'nightShift':'dayShift'))} ${esc(x.time)}</b><br><span class="hint">${esc(x.summary)}</span></td><td>${esc(x.recorder)}${x.team?' · '+esc(x.team):''}</td><td>${esc(x.by||'—')}</td></tr>`).join('')}</tbody></table></div>`:`<p class="hint">${T('mobLogEmpty')}<br>${S2('mobLogEmpty')}</p>`}</details>`}
 function mobImportEvents(list){const have=new Set(EVTS.map(e=>e.id));let n=0;const num=v=>+String(v==null?'':v).replace(/,/g,'').trim(),has=v=>String(v==null?'':v).trim()!=='';
-  (list||[]).forEach(row=>{const id='MOB-'+row.id;if(have.has(id))return;const sys=row.system,type=row.type||'refill';if(!SYS_IDS.includes(sys)||!['refill','oil_change','leak','maint'].includes(type))return;const ts=mobRowTs(row);if(ts==null)return;
+  (list||[]).forEach(row=>{const id='MOB-'+row.id;if(have.has(id)||isGone(id))return;const sys=row.system,type=row.type||'refill';if(!SYS_IDS.includes(sys)||!['refill','oil_change','leak','maint'].includes(type))return;const ts=mobRowTs(row);if(ts==null)return;
     const op=normRec(row.recorder),tm=teamOf(op)||(['A','B','C'].includes(row.team)?row.team:''),lv=type!=='maint';const bf=num(row.beforeL),af=num(row.afterL);if(lv&&(!has(row.beforeL)||!has(row.afterL)||!isFinite(bf)||!isFinite(af)))return;
     const ev=Object.assign({id,eventType:type,systemType:sys,ts,operator:op,recorder:op,team:tm,note:T('fromMobile'),shift:shiftKey(ts),source:'mobile'},stamp(ts));
     if(lv){ev.beforeLevel=Math.round(bf);ev.afterLevel=Math.round(af)}
@@ -5701,9 +5705,9 @@ function mobImportEvents(list){const have=new Set(EVTS.map(e=>e.id));let n=0;con
 async function mobPull(manual,again){const c=mobCfg();if(!c.on&&!manual)return;if(!c.url||!c.key){if(manual)toast('abnormal','mobNotSet','');return}
   if(MOB.busy)return;MOB.busy=true;mobRefreshUI();
   try{/* once after this update (and from the button): also re-read phone entries of the last 45 days that an older version marked as pulled but could not read */
-    if(!again&&store.get('hrmRepull2')!=='1')again=45;
-    const o=await mobCall(Object.assign({action:'pull',key:c.key},again?{again}:{}));if(again)store.set('hrmRepull2','1');const rows=o.rows||[],evs=o.events||[],logs=o.logs||[];MOB.err='';MOB.last=Date.now();mobSendNames(false);if(o.team&&String(o.team)!==c.team){c.team=String(o.team);saveAll();syncSoon()}
-    if(rows.length||evs.length||logs.length){const {n,found}=mobImport(rows);const e0=EVTS.length,ne=mobImportEvents(evs);EVTS.slice(e0).forEach(e=>showShiftOf(e.ts));const nl=mobImportLogs(logs);if(n||ne){commit()}else if(nl){saveAll();syncSoon()}if(nl&&UI.page==='settings'){const card=$('#mob-card');if(card)card.outerHTML=mobCardHTML()}const okIds=rows.filter(r=>mobRowTs(r)!=null).concat(evs.filter(e=>mobRowTs(e)!=null),logs).map(r=>r.id);const bad=rows.length+evs.length-(okIds.length-logs.length);if(bad>0)MOB.err=T('mobBadRows',{n:bad});
+    if(!again&&store.get('hrmRepull2')!=='1')again=45;if(!again)again=2;
+    const o=await mobCall(Object.assign({action:'pull',key:c.key},again?{again}:{}));if(again>2)store.set('hrmRepull2','1');MOB.rows=(o.rows||[]).slice(-40);const rows=o.rows||[],evs=o.events||[],logs=o.logs||[];MOB.err='';MOB.last=Date.now();mobSendNames(false);if(o.team&&String(o.team)!==c.team){c.team=String(o.team);saveAll();syncSoon()}
+    if(rows.length||evs.length||logs.length){const {n,found}=mobImport(rows);const e0=EVTS.length,ne=mobImportEvents(evs);EVTS.slice(e0).forEach(e=>showShiftOf(e.ts));const nl=mobImportLogs(logs);if(n||ne){commit()}else if(nl){saveAll();syncSoon()}if(nl&&UI.page==='settings'){const card=$('#mob-card');if(card)card.outerHTML=mobCardHTML()}const okIds=rows.filter(r=>!r.imported&&mobRowTs(r)!=null).concat(evs.filter(e=>!e.imported&&mobRowTs(e)!=null),logs).map(r=>r.id);const bad=rows.concat(evs).filter(r=>mobRowTs(r)==null).length;if(bad>0)MOB.err=T('mobBadRows',{n:bad});
       if(okIds.length)await mobCall({action:'ack',key:c.key,ids:okIds.join(','),by:(SYNC.info&&SYNC.info.computer)||'PC'});MOB.lastN=n+ne;
       if(n||ne)toast('brand','mobImported',esc([n?T('mobImportedD',{n}):'',ne?T('mobRefillD',{n:ne}):''].filter(Boolean).join(' · ')));
       if(CFG.notifications&&found.some(x=>x[0]==='abnormal'))setTimeout(()=>toast('abnormal','abnToastT',found.filter(x=>x[0]==='abnormal').map(x=>esc(T('short_'+x[1]))).join(', ')),900)}
@@ -5736,12 +5740,18 @@ async function dataCheck(full){const api=PYW();if(!api){refreshNow(true);return}
     ['ไฟล์กลาง · Shared file',srv&&srv.ok?('rev '+srv.rev+(String(srv.rev)===String(SYNC.rev)?' = เครื่องนี้ ✓':' ≠ เครื่องนี้ '+SYNC.rev+' ⚠')+' · '+ms+' ms'):'⚠ '+esc((srv&&srv.error)||'offline')],
     ['สถานะ · State',SYNC.on?SYNC.state+(SYNC.pending?' (รอส่ง)':''):'ยังไม่เชื่อม ⚠'],
     ['ดึงจากมือถือ · Phone pull',MOB.err?'⚠ '+MOB.err:MOB.last?f(MOB.last)+' · +'+(MOB.lastN||0):'—'],
+    ...(()=>{const rs=(MOB.rows||[]).filter(r=>mobRowTs(r)!=null).sort((a,b)=>mobRowTs(a)-mobRowTs(b));const r=rs[rs.length-1];if(!r)return [];const have=REC.some(x=>String(x.id).startsWith('MOB-'+r.id+'-'));
+      return [['ส่งจากมือถือล่าสุด · Last phone entry',f(mobRowTs(r))+' · '+(r.recorder||'')+' · '+(r.imported?'ดึงโดย '+r.imported:'ยังไม่ถูกดึง')+(have?' · อยู่ในเครื่องนี้ ✓':' · ไม่อยู่ในเครื่องนี้ ⚠')]]})(),
     ['จำนวนบันทึก · Records',String(REC.length)],
     ...SYS_IDS.map(id=>{const r=lastRec(id);return ['ล่าสุด '+T('short_'+id),r?f(r.ts)+' · '+fN(r.level)+' L'+(r.operator?' · '+r.operator:''):'—']}),
     ['เวอร์ชัน · Version',cache||'—']];
   window._dckText=rows.map(r=>r[0]+': '+String(r[1]).replace(/<[^>]+>/g,'')).join('\n');
   if(body())body().innerHTML=`<table class="dck-t">${rows.map(r=>`<tr${/⚠/.test(r[1])?' class="warn"':''}><th>${esc(r[0])}</th><td>${esc(r[1])}</td></tr>`).join('')}</table>`}
-let _rfAt=0;function refreshNow(force){if(!force&&Date.now()-_rfAt<8000)return;_rfAt=Date.now();try{const api=PYW();if(api&&api.rev_reset)api.rev_reset()}catch(e){}if(SYNC.on)syncPoll();mobPull(!!force)}
+let _verAt=0,_ver0='';function verCheck(){if(!/^https?:/.test(location.protocol)||Date.now()-_verAt<15000)return;_verAt=Date.now();
+  fetch('version.txt',{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=v.trim();if(!/^hrm-desk-v\d+$/.test(v))return;if(!_ver0){_ver0=v;return}
+    if(v!==_ver0&&$('#modal-root').hidden&&!hasUnsaved()&&!(SYNC.pending||SYNC.busy)){try{store.set('hrmUpdated',v)}catch(e){}location.reload()}}).catch(()=>{})}
+verCheck();setInterval(verCheck,20*60000);
+let _rfAt=0;function refreshNow(force){verCheck();if(!force&&Date.now()-_rfAt<8000)return;_rfAt=Date.now();try{const api=PYW();if(api&&api.rev_reset)api.rev_reset()}catch(e){}if(SYNC.on)syncPoll();mobPull(!!force)}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshNow(false)});
 window.addEventListener('focus',()=>refreshNow(false));window.addEventListener('pageshow',e=>{if(e.persisted)refreshNow(false)});window.addEventListener('online',()=>refreshNow(true));
 function mobRefreshUI(){mobChipUpdate();const c=$('#mob-card');if(c&&UI.page==='settings'){const s=$('#mob-status');if(s)s.innerHTML=mobStatusHTML()}}
