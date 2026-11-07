@@ -331,7 +331,8 @@ function tempHigh_(c) { const v = Number(c.TEMP_HIGH); return isFinite(v) && v >
 function phoneBoot(code) {
   const c = cfg_(), ok = !!code && String(code).trim() === c.TEAM_CODE;
   return { ok: true, codeOk: ok, dayStart: c.DAY_START || '08:00', dayEnd: c.DAY_END || '20:00', machine: c.MACHINE || 'HRM Process',
-    recorders: ok ? recorders_(c) : [], members: ok ? members_(c) : [], version: SERVER_VER, tempHigh: tempHigh_(c) };
+    recorders: ok ? recorders_(c) : [], members: ok ? members_(c) : [], version: SERVER_VER, tempHigh: tempHigh_(c),
+    teamNow: ok ? (function () { try { const n = shiftNow_(c, new Date()); return rotaTeam_(c, n.shiftDate, n.shift) || ''; } catch (e) { return ''; } })() : '' };
 }
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 
@@ -703,7 +704,7 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.9.1';
+const SERVER_VER = 'v1.9.2';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   const p = PropertiesService.getScriptProperties();

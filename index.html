@@ -146,6 +146,19 @@ textarea{width:100%;min-height:84px;border:1px solid var(--well-line);border-rad
 #f-rec{font-family:Chakra,Plex,sans-serif}
 .ask-b{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ask-b .btn{height:50px;font-size:15.5px}
 
+.vh{position:absolute!important;width:1px!important;height:1px!important;opacity:0;pointer-events:none;overflow:hidden}
+.seg.teams{margin-bottom:10px}.seg.teams button{height:54px;font-size:17px}
+.seg.teams button[aria-pressed="true"]{color:#1A1300;background:linear-gradient(180deg,#FFD66B,#F5B629);box-shadow:0 0 14px rgba(255,197,61,.4),inset 0 1px 0 rgba(255,255,255,.5)}
+.names{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;border-radius:12px}
+.names.in button{animation:nin 260ms var(--ease-enter) both}.names.in button:nth-child(2){animation-delay:30ms}.names.in button:nth-child(3){animation-delay:60ms}.names.in button:nth-child(n+4){animation-delay:90ms}
+@keyframes nin{from{opacity:0;transform:translateY(6px)}}
+.names button{display:flex;align-items:center;gap:10px;min-height:54px;padding:8px 12px;border:1px solid var(--well-line);border-radius:12px;background:var(--well);box-shadow:inset 0 2px 6px rgba(0,0,0,.4);font:inherit;font-family:Chakra,Plex,sans-serif;font-size:17px;font-weight:700;letter-spacing:.03em;color:var(--fg2);text-align:left;touch-action:manipulation;transition:transform 140ms var(--ease-enter),border-color 200ms,box-shadow 200ms,color 200ms}
+.names button:active{transform:scale(.97);transition-duration:0s}
+.names button i{flex:none;width:20px;height:20px;border-radius:50%;border:2px solid #4A525E;display:grid;place-items:center}
+.names button[aria-pressed="true"]{color:#fff;border-color:var(--pri);box-shadow:0 0 0 3px var(--pri-s),0 0 14px rgba(92,225,255,.3)}
+.names button[aria-pressed="true"] i{border-color:var(--pri);background:var(--pri)}.names button[aria-pressed="true"] i:after{content:'';width:7px;height:7px;border-radius:50%;background:#04131A}
+.names.bad{outline:2px solid var(--bad);outline-offset:4px;animation:shake 220ms cubic-bezier(.36,.07,.19,.97)}
+.names .nn{grid-column:1/-1;font-size:13.5px;color:var(--fg3);padding:8px 2px}
 /* ---------- 3 hydraulic columns ---------- */
 .tanks3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
 .col{position:relative;border-radius:12px;padding:8px 5px 7px;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(0,0,0,.12));border:1px solid rgba(255,255,255,.05);transition:box-shadow 250ms var(--ease-enter),border-color 250ms}
@@ -284,7 +297,7 @@ function drops(){var ts=readTs(document.getElementById('f-date')?document.getEle
 function dropUI(clicked){try{paintCols()}catch(_){}var c=document.getElementById('drop-card');if(!c)return;var l=st.mode==='act'?[]:drops();c.hidden=!l.length;if(!l.length){return}
   document.getElementById('drop-list').innerHTML=l.map(function(x){return '<div class="drop-it"><b>'+esc(x.name)+'</b><span>'+x.from+' → '+(x.from-x.drop)+' L · ลด '+x.drop+' L ใน '+x.hrs+' ชม. ('+x.rate+' L/ชม.)</span></div>'}).join('');
   var tx=document.getElementById('f-droptext');tx.hidden=st.drop!=='other';if(clicked&&st.drop==='other')tx.focus()}
-var PAGE_VER='v1.9.1';
+var PAGE_VER='v1.9.2';
 /* the team comes from the recorder's name (Settings → Members & teams on the PC) */
 function teamOf(n){var k=String(n||'').toUpperCase(),l=BOOT.members||[];for(var i=0;i<l.length;i++)if(l[i].name===k)return l[i].team||'';return ''}
 function teamShow(){var t=teamOf(document.getElementById('f-rec')?document.getElementById('f-rec').value:''),el=document.getElementById('team-badge');st.team=t;if(el){el.textContent=t?'ทีม '+t+' · Team '+t:'ทีมจะขึ้นเองตามชื่อ';el.className='team-badge'+(t?' on':'')}}
@@ -364,8 +377,9 @@ function form(){var ns=nowShift();st.shift=ns.shift;st.date=ns.date;var d=new Da
   '<div class="card c-maint"><label class="lbl" for="f-mloc">จุดที่ซ่อม/ตรวจ<span>Location</span></label><input id="f-mloc" maxlength="120" autocomplete="off">'+
   '<label class="lbl" for="f-mwork" style="margin-top:10px">งานที่ทำ<span>Work done</span></label><textarea id="f-mwork" maxlength="200" placeholder="เช่น เปลี่ยนไส้กรอง, เปลี่ยนซีล" style="margin-top:0"></textarea></div>'+
   '<div class="card c-reason"><span class="lbl" id="lb-reason">สาเหตุที่เติมเพิ่ม<span>Reason</span></span><div class="reasons" id="reasons"></div><textarea id="f-rtext" placeholder="พิมพ์สาเหตุ…" maxlength="200" hidden></textarea></div></div>';
-  h+='<div class="card"><label class="lbl" for="f-rec">ผู้บันทึก<span>Recorder</span></label><input id="f-rec" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="พิมพ์ตัวแรก เช่น O" value="'+esc((BOOT.recorders||[]).indexOf(LS.get('rec'))>=0?LS.get('rec'):'')+'" style="text-transform:uppercase;font-weight:800;letter-spacing:.5px"><div class="rec-chips" id="rec-chips"></div>'+
-  '<div class="team-badge" id="team-badge"></div>'+
+  h+='<div class="card"><div class="ph"><h2>ผู้บันทึก</h2><small>Recorder · เลือกทีมแล้วแตะชื่อ</small><span class="dots"><i></i><i></i><i></i></span></div>'+
+  '<input id="f-rec" class="vh" readonly tabindex="-1" aria-hidden="true" value="'+esc((BOOT.recorders||[]).indexOf(LS.get('rec'))>=0?LS.get('rec'):'')+'"><div class="seg teams" id="seg-team"></div><div class="names" id="rec-chips"></div>'+
+  '<div class="team-badge" id="team-badge" hidden></div>'+
   '<div style="margin-top:10px" id="statuswrap"><span class="lbl">สถานะเครื่องจักร<span>Machine status</span></span><div class="seg st" id="seg-status"><button data-v="run">ใช้งาน</button><button data-v="stop">เครื่องจักรหยุด</button></div></div></div>'+
   '<div class="card"><span class="lbl">ส่งล่าสุด<span>Recent</span></span><div class="recent" id="recent"><div><span>กำลังโหลด…</span></div></div></div>'+
   '<div class="who"><span>ข้อมูลจะเข้าโปรแกรมบนคอมอัตโนมัติ · '+PAGE_VER+'</span><button onclick="logout()">เปลี่ยนรหัสทีม</button></div>';
@@ -396,18 +410,21 @@ function leakCalc(){var el=document.getElementById('leakamt');if(!el)return;var 
 function sendLabel(){return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 20 4l-5 16-3.2-6.4z"/><path d="m11.8 13.6 3.6-4"/></svg>'+(st.mode==='act'?actBtn(actOf()):'ส่งข้อมูล · Send'+
   '<svg class="ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="4"/><circle id="ring" cx="22" cy="22" r="18" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" transform="rotate(-90 22 22)" stroke-dasharray="113.1" stroke-dashoffset="113.1" style="transition:stroke-dashoffset 400ms var(--ease-enter)"/><text id="ring-t" x="22" y="27" text-anchor="middle" font-family="Chakra,sans-serif" font-weight="700" font-size="13" fill="#fff">0</text></svg>')}
 function stepT(d){var i=document.getElementById('f-tanks');var v=Math.max(1,Math.min(50,(parseInt(i.value,10)||0)+d));i.value=v;st.tanks=v;i.classList.remove('bad')}
-/* recorder: type the first letter(s) → the name is completed and matching names are offered */
-function recChips(){var i=document.getElementById('f-rec'),box=document.getElementById('rec-chips');if(!i||!box)return;var q=i.value.toUpperCase().slice(0,i.selectionStart==null?i.value.length:i.selectionStart),all=BOOT.recorders||[];
-  var pre=all.filter(function(n){return n.indexOf(q)===0}),m=!q?all:pre.length?pre:all.filter(function(n){return n.indexOf(q)>0});var cur=i.value.toUpperCase();
-  box.innerHTML=m.map(function(n){return '<button type="button" data-n="'+esc(n)+'"'+(n===cur?' aria-pressed="true"':'')+'><b>'+esc(n.slice(0,n.indexOf(q)===0?q.length:0))+'</b>'+esc(n.slice(n.indexOf(q)===0?q.length:0))+'</button>'}).join('')||'<span>ไม่มีชื่อนี้ในรายชื่อ</span>'}
-function recSetup(){var i=document.getElementById('f-rec'),box=document.getElementById('rec-chips');if(!i)return;
-  i.addEventListener('input',function(e){var v=i.value.toUpperCase().replace(/\s+/g,'');i.value=v;
-    if(e.inputType&&e.inputType.indexOf('insert')===0&&v){var hit=(BOOT.recorders||[]).filter(function(n){return n.indexOf(v)===0})[0];if(hit&&hit!==v){i.value=hit;try{i.setSelectionRange(v.length,hit.length)}catch(_){}}}
-    recChips();teamShow()});
-  i.addEventListener('focus',function(){try{i.select()}catch(_){}recChips()});
-  i.addEventListener('blur',function(){var v=i.value.toUpperCase(),all=BOOT.recorders||[];if(v&&all.indexOf(v)<0){var hit=all.filter(function(n){return n.indexOf(v)===0});if(hit.length===1)i.value=hit[0]}setTimeout(function(){recChips();teamShow()},0)});
-  box.addEventListener('mousedown',function(e){e.preventDefault()});
-  box.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('button');if(!b)return;i.value=b.dataset.n;i.classList.remove('bad');showErr('');recChips();teamShow()});
+/* recorder: pick the team (A/B/C), then tap the name. Starts on the team working this shift */
+var RT={team:''};
+function teamsList(){var m=BOOT.members||[],x=['A','B','C'];if(m.some(function(o){return !o.team}))x.push('-');return x}
+function namesOf(t){return (BOOT.members||[]).filter(function(o){return (o.team||'-')===t}).map(function(o){return o.name})}
+function recChips(){var i=document.getElementById('f-rec'),box=document.getElementById('rec-chips'),tb=document.getElementById('seg-team');if(!i||!box||!tb)return;
+  var cur=i.value.toUpperCase();if(cur&&teamOf(cur))RT.team=teamOf(cur);if(!RT.team)RT.team='A';
+  tb.innerHTML=teamsList().map(function(t){var n=namesOf(t).length;return '<button type="button" data-t="'+t+'" aria-pressed="'+(t===RT.team)+'">'+(t==='-'?'ไม่มีทีม':'ทีม '+t)+'<small>'+n+' คน'+(t===BOOT.teamNow&&t!=='-'?' · เข้ากะ':'')+'</small></button>'}).join('');
+  var l=namesOf(RT.team);box.innerHTML=l.length?l.map(function(n){return '<button type="button" data-n="'+esc(n)+'" aria-pressed="'+(n===cur)+'"><i></i>'+esc(n)+'</button>'}).join(''):'<span class="nn">ยังไม่มีชื่อในทีมนี้ · เพิ่มได้ที่โปรแกรมบนคอม (ตั้งค่า → สมาชิกและทีม)</span>';
+  box.classList.toggle('bad',i.classList.contains('bad'))}
+function recSetup(){var i=document.getElementById('f-rec'),box=document.getElementById('rec-chips'),tb=document.getElementById('seg-team');if(!i)return;
+  var tn=BOOT.teamNow||'',ns=nowShift(),cur=i.value.toUpperCase();
+  if(tn&&ns.shift===st.shift&&ns.date===st.date){RT.team=tn;if(cur&&teamOf(cur)!==tn)i.value=''}else RT.team=teamOf(cur)||tn||'A';
+  tb.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('button');if(!b)return;RT.team=b.dataset.t;if(teamOf(i.value)!==(b.dataset.t==='-'?'':b.dataset.t))i.value='';
+    var nb=box;nb.classList.remove('in');void nb.offsetWidth;nb.classList.add('in');recChips();teamShow()});
+  box.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('button');if(!b)return;i.value=b.dataset.n;i.classList.remove('bad');showErr('');try{if(navigator.vibrate)navigator.vibrate(6)}catch(_){}recChips();teamShow()});
   recChips();teamShow()}
 /* phone check page (…/exec?check=1): tells at a glance whether this phone can use the form */
 function checkPage(){var ua=String(navigator.userAgent||''),rows=[],bad=0;
@@ -478,7 +495,7 @@ function evSummary(e){var why=function(){var r=(REASONS[e.type]||[]).filter(func
   if(e.type==='oil_change')return 'ถ่ายออก '+e.drainedL+' L · ใหม่ '+e.tanks+' ถัง · '+e.beforeL+' → '+e.afterL+' L · '+why();
   if(e.type==='leak')return e.location+' · '+e.beforeL+' → '+e.afterL+' L';
   return (e.location?e.location+' · ':'')+e.action}
-function bad(id,msg){var el=document.getElementById(id);if(el){el.classList.add('bad');el.focus()}showErr(msg);return false}
+function bad(id,msg){var el=document.getElementById(id);if(el){el.classList.add('bad');if(id==='f-rec'){recChips();var nb=document.getElementById('rec-chips');if(nb)nb.scrollIntoView({block:'center'})}else el.focus()}showErr(msg);return false}
 function clearVals(){SYS.forEach(function(s){document.getElementById('f-'+s[2]).value='';document.getElementById('f-'+s[3]).value=''})}
 function queue(){try{return JSON.parse(LS.get('queue')||'[]')}catch(e){return []}}
 function saveQ(q){LS.set('queue',JSON.stringify(q))}
