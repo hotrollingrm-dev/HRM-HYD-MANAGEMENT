@@ -676,10 +676,77 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.8.6';
+const SERVER_VER = 'v1.9.0';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
-  return { ok: true, version: SERVER_VER, time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') };
+  const p = PropertiesService.getScriptProperties();
+  return { ok: true, version: SERVER_VER, time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'),
+    autoUpdate: { on: autoTimerOn_(), deployed: p.getProperty('AU_DEPLOYED') || '', at: p.getProperty('AU_AT') || '', error: p.getProperty('AU_ERR') || '' } };
+}
+
+/* ================= self-update from GitHub =================
+ * Every 15 minutes this script reads apps-script/VERSION in the GitHub repo. When it is newer than the
+ * version this Web App runs, it copies Code.gs / Index.html / appsscript.json from the repo into this
+ * project, saves a new version and moves the existing Web App deployment to it (the /exec link stays the same).
+ * Nothing secret leaves Google: it only reads public files and uses this account's own permission.
+ * One-time setup: turn on "Google Apps Script API" at https://script.google.com/home/usersettings,
+ * then run setupAutoUpdate once from the editor and allow the permissions. */
+const AU_REPO = 'hotrollingrm-dev/HRM-HYD-MANAGEMENT';
+const AU_RAW = 'https://raw.githubusercontent.com/' + AU_REPO + '/main/';
+const AU_API = 'https://script.googleapis.com/v1/projects/';
+function setupAutoUpdate() {
+  ScriptApp.getProjectTriggers().forEach(t => { if (t.getHandlerFunction() === 'autoUpdate') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('autoUpdate').timeBased().everyMinutes(15).create();
+  const r = autoUpdate(true);
+  Logger.log(JSON.stringify(r));
+  return r;
+}
+function autoTimerOn_() { try { return ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'autoUpdate'); } catch (e) { return false; } }
+function auGet_(path) {
+  const r = UrlFetchApp.fetch(AU_RAW + path + '?t=' + Date.now(), { muteHttpExceptions: true, headers: { 'Cache-Control': 'no-cache' } });
+  if (r.getResponseCode() !== 200) throw new Error('GitHub ' + path + ': HTTP ' + r.getResponseCode());
+  return r.getContentText();
+}
+function auApi_(method, path, body) {
+  const o = { method: method, muteHttpExceptions: true, contentType: 'application/json', headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() } };
+  if (body) o.payload = JSON.stringify(body);
+  const r = UrlFetchApp.fetch(AU_API + ScriptApp.getScriptId() + path, o), code = r.getResponseCode();
+  let j = {}; try { j = JSON.parse(r.getContentText() || '{}'); } catch (e) { }
+  if (code >= 300) {
+    const m = (j.error && j.error.message) || r.getContentText().slice(0, 200);
+    if (code === 403 && /has not been used|disabled|User has not enabled/i.test(m)) throw new Error('ยังไม่ได้เปิด Google Apps Script API ที่ script.google.com/home/usersettings');
+    throw new Error('Apps Script API ' + method + ' ' + path + ': ' + code + ' ' + m);
+  }
+  return j;
+}
+function autoUpdate(force) {
+  const p = PropertiesService.getScriptProperties(), lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return { ok: false, error: 'busy' };
+  try {
+    const want = auGet_('apps-script/VERSION').trim();
+    if (!/^v\d+\.\d+\.\d+$/.test(want)) throw new Error('VERSION ไม่ถูกต้อง: ' + want.slice(0, 30));
+    const have = p.getProperty('AU_DEPLOYED') || SERVER_VER;
+    if (force !== true && want === have) { p.deleteProperty('AU_ERR'); return { ok: true, same: true, version: have }; }
+    const code = auGet_('apps-script/Code.gs'), page = auGet_('apps-script/Index.html'), man = auGet_('apps-script/appsscript.json');
+    if (code.indexOf("const SERVER_VER = '" + want + "'") < 0) throw new Error('Code.gs ใน GitHub ยังไม่ใช่ ' + want + ' (รอสักครู่แล้วระบบจะลองใหม่)');
+    JSON.parse(man);
+    const cfgJs = auGet_('config.js'), m = /macros\/s\/([A-Za-z0-9_-]+)\/exec/.exec(cfgJs), dep = p.getProperty('AU_DEPLOY_ID') || (m && m[1]);
+    if (!dep) throw new Error('ไม่พบรหัส Deployment ใน config.js');
+    /* keep any other HTML files; the server code is exactly the repo's Code.gs */
+    const cur = auApi_('get', '/content').files || [];
+    const files = cur.filter(f => f.type === 'HTML' && f.name !== 'Index').map(f => ({ name: f.name, type: f.type, source: f.source }));
+    files.unshift({ name: 'appsscript', type: 'JSON', source: man }, { name: 'Code', type: 'SERVER_JS', source: code }, { name: 'Index', type: 'HTML', source: page });
+    auApi_('put', '/content', { files: files });
+    const ver = auApi_('post', '/versions', { description: 'auto ' + want }).versionNumber;
+    auApi_('put', '/deployments/' + dep, { deploymentConfig: { scriptId: ScriptApp.getScriptId(), versionNumber: ver, manifestFileName: 'appsscript', description: 'auto ' + want } });
+    const at = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+    p.setProperties({ AU_DEPLOYED: want, AU_AT: at }); p.deleteProperty('AU_ERR');
+    p.setProperty('AU_LOG', (at + ' ' + want + ' v' + ver + '\n' + (p.getProperty('AU_LOG') || '')).slice(0, 2000));
+    return { ok: true, updated: true, version: want, scriptVersion: ver, at: at };
+  } catch (e) {
+    p.setProperty('AU_ERR', String(e.message || e).slice(0, 300));
+    return { ok: false, error: String(e.message || e) };
+  } finally { lock.releaseLock(); }
 }
 
 /* phone: script errors seen on a phone (for checking phones that do not work) */
