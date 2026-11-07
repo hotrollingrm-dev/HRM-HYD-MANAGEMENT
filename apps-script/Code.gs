@@ -726,7 +726,7 @@ function autoUpdate(force) {
     const want = auGet_('apps-script/VERSION').trim();
     if (!/^v\d+\.\d+\.\d+$/.test(want)) throw new Error('VERSION ไม่ถูกต้อง: ' + want.slice(0, 30));
     const have = p.getProperty('AU_DEPLOYED') || SERVER_VER;
-    if (force !== true && want === have) { p.deleteProperty('AU_ERR'); return { ok: true, same: true, version: have }; }
+    if (force !== true && want === have && !p.getProperty('AU_ERR')) {  /* a failed attempt is retried on the next run */ p.deleteProperty('AU_ERR'); return { ok: true, same: true, version: have }; }
     const code = auGet_('apps-script/Code.gs'), page = auGet_('apps-script/Index.html'), man = auGet_('apps-script/appsscript.json');
     if (code.indexOf("const SERVER_VER = '" + want + "'") < 0) throw new Error('Code.gs ใน GitHub ยังไม่ใช่ ' + want + ' (รอสักครู่แล้วระบบจะลองใหม่)');
     JSON.parse(man);
