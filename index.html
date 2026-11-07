@@ -167,6 +167,9 @@ textarea{width:100%;min-height:84px;border:1px solid var(--well-line);border-rad
 @keyframes breathe{50%{box-shadow:inset 0 2px 6px rgba(0,0,0,.55),0 0 0 5px color-mix(in srgb,var(--c) 14%,transparent),0 0 22px color-mix(in srgb,var(--c) 45%,transparent)}}
 .fld:has(input.bad){border-color:var(--bad);box-shadow:0 0 0 3px rgba(255,90,95,.25)}
 .fld input.bad{animation:none;box-shadow:none!important;border:0!important}
+.fld.t.hot{border-color:var(--bad);box-shadow:inset 0 2px 6px rgba(0,0,0,.55),0 0 0 3px rgba(255,90,95,.22),0 0 16px rgba(255,90,95,.35)}
+.fld.t.hot input{color:#FFB3B5;text-shadow:0 0 10px rgba(255,90,95,.6)}.fld.t.hot .k span:first-child{color:var(--bad);font-weight:600}
+.kwarn{margin:-2px 0 8px;padding:7px 10px;border-radius:10px;background:rgba(255,90,95,.14);border:1px solid rgba(255,90,95,.5);color:#FFC2C3;font-size:13px;font-weight:600;animation:slidein 260ms var(--ease-enter) both}
 .delta{display:flex;justify-content:space-between;align-items:center;gap:4px;margin-top:5px;font-size:10.5px;color:var(--fg3);white-space:nowrap}
 .dchip{font-family:Chakra,Plex,sans-serif;font-weight:700;font-size:11px;padding:1px 6px;border-radius:6px;background:rgba(67,224,138,.12);color:var(--run)}
 .dchip.bad{background:rgba(255,90,95,.16);color:var(--bad)}.dchip.up{background:rgba(92,225,255,.12);color:var(--pri)}
@@ -272,7 +275,7 @@ var BOOT={machine:'HRM Process',dayStart:'08:00',dayEnd:'20:00',recorders:[],mem
 var DROP_REASONS=[['slow_return','น้ำมันไหลกลับแทงก์ช้า'],['mt_drain','มี Drain จาก Maintenance'],['leak','น้ำมันรั่ว'],['parts','เปลี่ยน/ซ่อมอุปกรณ์'],['other','ระบุเอง']];
 var LAST={last:{},rates:{servo:5,auxiliary:4,lubrication:4}};try{var _l=JSON.parse(localStorage.getItem('hrmMob_last')||'null');if(_l&&_l.last)LAST=_l}catch(_){}
 function saveLast(){try{localStorage.setItem('hrmMob_last',JSON.stringify(LAST))}catch(_){}}
-function loadLast(){if(typeof call!=='function')return;call('phoneLast',[getCode()]).then(function(r){if(r&&r.ok){LAST={last:r.last||{},rates:r.rates||LAST.rates};saveLast();dropUI()}},function(){})}
+function loadLast(){if(typeof call!=='function')return;call('phoneLast',[getCode()]).then(function(r){if(r&&r.ok){LAST={last:r.last||{},rates:r.rates||LAST.rates,scale:r.scale||{},tempHigh:r.tempHigh};saveLast();dropUI()}},function(){})}
 function readTs(date,time,shift){var d=/^(\d{4})-(\d{2})-(\d{2})$/.exec(date||''),t=/^(\d{1,2}):(\d{2})$/.exec(time||'');if(!d||!t)return null;var ms=Date.UTC(+d[1],+d[2]-1,+d[3],+t[1],+t[2])-7*3600000;
   if(shift==='night'&&(+t[1]*60+ +t[2])<hm(BOOT.dayStart))ms+=86400000;return ms}
 function drops(){var ts=readTs(document.getElementById('f-date')?document.getElementById('f-date').value:'',val('f-time'),st.shift),out=[];if(ts==null)return out;
@@ -281,7 +284,7 @@ function drops(){var ts=readTs(document.getElementById('f-date')?document.getEle
 function dropUI(clicked){try{paintCols()}catch(_){}var c=document.getElementById('drop-card');if(!c)return;var l=st.mode==='act'?[]:drops();c.hidden=!l.length;if(!l.length){return}
   document.getElementById('drop-list').innerHTML=l.map(function(x){return '<div class="drop-it"><b>'+esc(x.name)+'</b><span>'+x.from+' → '+(x.from-x.drop)+' L · ลด '+x.drop+' L ใน '+x.hrs+' ชม. ('+x.rate+' L/ชม.)</span></div>'}).join('');
   var tx=document.getElementById('f-droptext');tx.hidden=st.drop!=='other';if(clicked&&st.drop==='other')tx.focus()}
-var PAGE_VER='v1.9.0';
+var PAGE_VER='v1.9.1';
 /* the team comes from the recorder's name (Settings → Members & teams on the PC) */
 function teamOf(n){var k=String(n||'').toUpperCase(),l=BOOT.members||[];for(var i=0;i<l.length;i++)if(l[i].name===k)return l[i].team||'';return ''}
 function teamShow(){var t=teamOf(document.getElementById('f-rec')?document.getElementById('f-rec').value:''),el=document.getElementById('team-badge');st.team=t;if(el){el.textContent=t?'ทีม '+t+' · Team '+t:'ทีมจะขึ้นเองตามชื่อ';el.className='team-badge'+(t?' on':'')}}
@@ -439,13 +442,14 @@ function send(){showErr('');[].forEach.call(document.querySelectorAll('.bad'),fu
   var m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);if(!m)return bad('f-time',ERR.bad_time);var mins=+m[1]*60+ +m[2],ds=hm(BOOT.dayStart),de=hm(BOOT.dayEnd);
   if(st.shift==='day'?!(mins>=ds&&mins<de):!(mins>=de||mins<ds))return bad('f-time',ERR.time_shift);
   if(!rec)return bad('f-rec',ERR.no_recorder);if((BOOT.recorders||[]).indexOf(rec)<0)return bad('f-rec',ERR.bad_recorder+': '+(BOOT.recorders||[]).join(', '));teamShow();if(!st.team)return bad('f-rec',ERR.bad_team);
-  var rts=readTs(date,time,st.shift);SYS.forEach(function(s){if(r[s[2]]!==''&&rts!=null){var p=LAST.last[s[0]];if(!p||p.ts<=rts)LAST.last[s[0]]={level:+r[s[2]],ts:rts}}});saveLast();
+  var rts=readTs(date,time,st.shift);SYS.forEach(function(s){if(r[s[2]]!==''&&rts!=null){var p=LAST.last[s[0]];if(!p||p.ts<=rts)LAST.last[s[0]]={level:+r[s[2]],ts:rts,temp:r[s[3]]!==''?+r[s[3]]:(p&&p.temp)}}});saveLast();
   kClose();SYS.forEach(function(s){if(r[s[3]]!==''&&!isNaN(+r[s[3]]))TP[s[0]]=+r[s[3]]});LS.set('tprev',JSON.stringify(TP));
   LS.set('rec',rec);var q=queue();q.push(r);saveQ(q);st.replaces='';st.drop='';var dtx=document.getElementById('f-droptext');if(dtx)dtx.value='';clearVals();segs();dropUI();renderPend();
   var b=document.getElementById('send');b.disabled=true;b.textContent='กำลังส่ง…';
   flush(true).then(function(okN){b.disabled=false;b.innerHTML=sendLabel();paintCols();var sum=SYS.filter(function(s){return r[s[2]]!==''}).map(function(s){return s[0]==='servo'?'Servo '+r.servoL:(s[0]==='auxiliary'?'Aux '+r.auxL:'Lube '+r.lubL)}).join(' · ');
     if(queue().some(function(x){return x.id===r.id}))pop('เก็บไว้ในเครื่องแล้ว','ยังส่งไม่ได้ (ไม่มีสัญญาณ) ระบบจะส่งให้อัตโนมัติเมื่อมีเน็ต<br>'+esc(thDate(r.shiftDate))+' '+(r.shift==='day'?'กะเช้า':'กะดึก')+' '+r.time);
-    else pop('ส่งข้อมูลเรียบร้อย',esc(thDate(r.shiftDate))+' · '+(r.shift==='day'?'กะเช้า':'กะดึก')+' '+r.time+' · Team '+r.team+'<br>'+esc(sum)+' L')})}
+    else pop('ส่งข้อมูลเรียบร้อย',esc(thDate(r.shiftDate))+' · '+(r.shift==='day'?'กะเช้า':'กะดึก')+' '+r.time+' · Team '+r.team+'<br>'+esc(sum)+' L'+hotNote(r))})}
+function hotNote(r){var h=SYS.filter(function(s){return r[s[3]]!==''&&+r[s[3]]>tHigh()});return h.length?'<br><b style="color:#FF8A8D">🌡️ อุณหภูมิสูงเกิน '+tHigh()+' °C: '+h.map(function(s){return SYSC[s[0]][0]+' '+r[s[3]]+' °C'}).join(', ')+'</b><br>ระบบแจ้งกลุ่ม LINE ให้แล้ว':''}
 function checkTime(time){var m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);if(!m)return 'bad_time';var mins=+m[1]*60+ +m[2],ds=hm(BOOT.dayStart),de=hm(BOOT.dayEnd);
   if(st.shift==='day'?!(mins>=ds&&mins<de):!(mins>=de||mins<ds))return 'time_shift';return ''}
 function sendAct(){var rec=val('f-rec').toUpperCase(),time=val('f-time'),date=document.getElementById('f-date').value,t=st.act,A=actOf();
@@ -518,6 +522,8 @@ setInterval(function(){if(queue().length)flush(false)},30000);
 /* ===== control-panel look: 3 tank columns + slide ruler / keypad sheet ===== */
 var SCALE={servo:{lo:4500,hi:6500,low:5000},auxiliary:{lo:4500,hi:5750,low:4500},lubrication:{lo:3500,hi:5750,low:3500}};
 var SYSC={servo:['SERVO','#5B9BFF'],auxiliary:['AUX','#2FD3C0'],lubrication:['LUB','#FFB547']};
+function scaleOf(k){var s=LAST.scale&&LAST.scale[k];return s&&isFinite(s.lo)&&isFinite(s.hi)&&s.hi>s.lo?s:SCALE[k]}
+function tHigh(){var v=+(LAST.tempHigh||BOOT.tempHigh);return isFinite(v)&&v>0?v:55}
 var TP={};try{TP=JSON.parse(LS.get('tprev')||'{}')||{}}catch(_){TP={}}
 var reduced=function(){return !!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)};
 var fmtN=function(n){n=Math.round(+n);var s=String(Math.abs(n)),o='';while(s.length>3){o=','+s.slice(-3)+o;s=s.slice(0,-3)}return (n<0?'-':'')+s+o};
@@ -556,8 +562,8 @@ function colsHTML(){return SYS.map(function(s){var k=s[0];return '<div class="co
   '<label class="fld t" data-f="f-'+s[3]+'"><span class="k"><span>อุณหภูมิ</span><span>°C</span></span><input id="f-'+s[3]+'" class="fv" readonly inputmode="none" tabindex="-1" autocomplete="off"></label>'+
   '<div class="delta"><span id="pv-'+k+'">ก่อน —</span><span class="dchip" id="d-'+k+'" hidden></span></div></div>'}).join('')}
 function prevL(k){var p=LAST.last[k];return p&&isFinite(p.level)?+p.level:null}
-function prevT(k){return TP[k]!=null&&isFinite(+TP[k])?+TP[k]:null}
-function setLevel(k,v){var el=document.getElementById('lv-'+k);if(!el)return;var S=SCALE[k],f=v==null?0:Math.max(0,Math.min(1,(v-S.lo)/(S.hi-S.lo)));el.style.transform='translateY('+(74-74*f)+'px)';
+function prevT(k){var p=LAST.last[k];if(p&&p.temp!=null&&isFinite(+p.temp))return +p.temp;return TP[k]!=null&&isFinite(+TP[k])?+TP[k]:null}
+function setLevel(k,v){var el=document.getElementById('lv-'+k);if(!el)return;var S=scaleOf(k),f=v==null?0:Math.max(0,Math.min(1,(v-S.lo)/(S.hi-S.lo)));el.style.transform='translateY('+(74-74*f)+'px)';
   var lw=document.getElementById('low-'+k);if(lw)lw.setAttribute('transform','translate(0 '+(124-74*((S.low-S.lo)/(S.hi-S.lo)))+')')}
 function setTemp(k,t){var el=document.getElementById('nd-'+k);if(el)el.style.transform='rotate('+(t==null?-80:-80+Math.max(0,Math.min(1,(t-20)/60))*160)+'deg)'}
 var _flash={};
@@ -567,6 +573,7 @@ function paintCols(){if(!document.getElementById('col-servo'))return;var dl=st.m
     document.getElementById('pv-'+k).textContent='ก่อน '+(pl!=null?fmtN(pl):'—');
     var c=document.getElementById('d-'+k),lv=L!==''&&!isNaN(+L)?+L:null;
     if(lv!=null&&pl!=null&&String(Math.round(lv)).length>=String(Math.round(pl)).length){var d=Math.round(lv-pl);c.hidden=false;c.textContent=(d>0?'+':d<0?'−':'±')+fmtN(Math.abs(d));c.className='dchip'+(dk[k]?' bad':d>0?' up':'')}else c.hidden=true;
+    var tv=T!==''&&!isNaN(+T)?+T:null,tf=ti.closest('.fld'),hot=tv!=null&&tv>tHigh();tf.classList.toggle('hot',hot);tf.querySelector('.k span').textContent=hot?'สูงเกิน '+tHigh()+'°':'อุณหภูมิ';
     setLevel(k,lv!=null&&String(Math.round(lv)).length>=String(Math.round(pl||lv)).length?lv:pl);setTemp(k,T!==''&&!isNaN(+T)?+T:pt);
     var col=document.getElementById('col-'+k);col.classList.toggle('abn',!!dk[k]);if(dk[k]&&!_flash[k]){col.classList.remove('flash');void col.offsetWidth;col.classList.add('flash')}_flash[k]=!!dk[k]});
   var ring=document.getElementById('ring');if(ring){ring.style.strokeDashoffset=113.1*(1-n/6);document.getElementById('ring-t').textContent=n;var b=document.getElementById('send');if(b)b.classList.toggle('ready',n===6)}}
@@ -574,16 +581,17 @@ function paintCols(){if(!document.getElementById('col-servo'))return;var dl=st.m
 var KS={id:null,raw:'',info:null},TW=14,R={cfg:null,lock:0,last:-1};
 var READ_ORDER=[];SYS.forEach(function(s){READ_ORDER.push('f-'+s[2])});SYS.forEach(function(s){READ_ORDER.push('f-'+s[3])});
 function fieldInfo(id){for(var i=0;i<SYS.length;i++){var s=SYS[i],k=s[0];
-    if(id==='f-'+s[2])return {k:k,kind:'L',name:SYSC[k][0],label:'ระดับน้ำมัน (L)',unit:'L',prev:prevL(k),step:25,lo:SCALE[k].lo-500,hi:SCALE[k].hi+500,low:SCALE[k].low,grp:READ_ORDER};
-    if(id==='f-'+s[3])return {k:k,kind:'T',name:SYSC[k][0],label:'อุณหภูมิ (°C)',unit:'°C',prev:prevT(k),step:0.5,lo:20,hi:90,low:null,grp:READ_ORDER}}
-  var k2=st.rsys||'servo',S=SCALE[k2],grp=['f-before','f-after'];var dr=document.getElementById('f-drained');if(dr&&!dr.closest('.card').hidden)grp=['f-drained','f-before','f-after'];
+    if(id==='f-'+s[2])return {k:k,kind:'L',name:SYSC[k][0],label:'ระดับน้ำมัน (L)',unit:'L',prev:prevL(k),step:25,lo:scaleOf(k).lo-500,hi:scaleOf(k).hi+500,low:scaleOf(k).low,grp:READ_ORDER};
+    if(id==='f-'+s[3])return {k:k,kind:'T',name:SYSC[k][0],label:'อุณหภูมิ (°C)',unit:'°C',prev:prevT(k),step:0.5,lo:20,hi:90,low:null,high:tHigh(),grp:READ_ORDER}}
+  var k2=st.rsys||'servo',S=scaleOf(k2),grp=['f-before','f-after'];var dr=document.getElementById('f-drained');if(dr&&!dr.closest('.card').hidden)grp=['f-drained','f-before','f-after'];
   var B=val('f-before');
   if(id==='f-before')return {k:k2,kind:'L',name:SYSC[k2][0],label:document.getElementById('lb-before').firstChild.textContent+' (L)',unit:'L',prev:prevL(k2),step:25,lo:S.lo-1500,hi:S.hi+500,low:S.low,grp:grp};
   if(id==='f-after')return {k:k2,kind:'L',name:SYSC[k2][0],label:document.getElementById('lb-after').firstChild.textContent+' (L)',unit:'L',prev:B!==''?+B+(st.act==='leak'?-25:200*(+val('f-tanks')||1)):prevL(k2),step:25,lo:S.lo-1500,hi:S.hi+1500,low:S.low,grp:grp};
   if(id==='f-drained')return {k:k2,kind:'L',name:SYSC[k2][0],label:'น้ำมันเก่าที่ถ่ายออก (L)',unit:'L',prev:200,step:10,lo:0,hi:6000,low:null,grp:grp};
   return null}
 function shown(v,info){if(v==='')return '';return info.kind==='L'&&v.indexOf('.')<0?fmtN(+v):v}
-function setField(id,raw){var el=document.getElementById(id),info=fieldInfo(id);if(!el||!info)return;el.value=shown(raw,info);el.classList.remove('bad');fire(el);paintCols();bigShow()}
+function setField(id,raw){var el=document.getElementById(id),info=fieldInfo(id);if(!el||!info)return;el.value=shown(raw,info);el.classList.remove('bad');fire(el);paintCols();bigShow();kWarn()}
+function kWarn(){var w=document.getElementById('k-warn');if(!w||!KS.info)return;var v=val(KS.id),on=KS.info.high!=null&&v!==''&&+v>KS.info.high;w.hidden=!on;if(on)w.textContent='🌡️ เกิน '+KS.info.high+' °C · ส่งแล้วระบบจะแจ้งกลุ่ม LINE ทันที'}
 function bigShow(){var b=document.getElementById('k-big');if(!b||!KS.id)return;var v=val(KS.id),info=KS.info;
   var txt=v===''?'<span class="ph0">—</span>':shown(v,info);if(b.dataset.t!==txt){var old=b.dataset.t||'';b.dataset.t=txt;
     if(v===''||reduced())b.innerHTML=txt+'<small>'+info.unit+'</small>';else{var h='';for(var i=0;i<txt.length;i++)h+='<span class="'+(old.charAt(i)!==txt.charAt(i)?'roll':'')+'">'+txt.charAt(i)+'</span>';b.innerHTML='<span class="odo">'+h+'</span><small>'+info.unit+'</small>'}}}
@@ -600,7 +608,7 @@ function kOpen(id){var info=fieldInfo(id);if(!info)return;var sh=document.getEle
   document.getElementById('hint2').textContent='ปัดซ้าย-ขวา · ขยับทีละ '+info.step+' '+info.unit+(p!=null?' · เริ่มที่ค่าครั้งก่อน':'');
   document.getElementById('k-same').hidden=p==null||id==='f-after';
   var m=LS.get('kmode')||'slide';sh.dataset.m=m;[].forEach.call(document.querySelectorAll('#kmode button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.m===m))});
-  var big=document.getElementById('k-big');big.dataset.t='x';bigShow();
+  var big=document.getElementById('k-big');big.dataset.t='x';bigShow();kWarn();
   sh.classList.add('on');sh.setAttribute('aria-hidden','false');document.getElementById('scrim').classList.add('on');document.body.classList.add('kp');
   if(m==='slide')rulerBuild();
   requestAnimationFrame(function(){var tgt=document.getElementById('col-'+info.k);if(!tgt||info.grp!==READ_ORDER)tgt=document.getElementById(id).closest('.card');var r=tgt.getBoundingClientRect(),top=innerHeight-sh.offsetHeight,dy=r.bottom-top+10;
@@ -616,7 +624,7 @@ function rulerBuild(){var info=KS.info,lo=info.lo,st0=info.step,cur=val(KS.id)!=
   if(cur<lo)lo=Math.floor((cur-500)/st0)*st0;var hi=Math.max(info.hi,cur+500);lo=Math.max(0,Math.floor(lo/st0)*st0);var n=Math.round((hi-lo)/st0),h='',tr=document.getElementById('rtrack');
   R.cfg={lo:lo,st:st0,n:n};var padW=Math.max(0,tr.clientWidth/2-TW/2);h+='<i class="rpad" style="width:'+padW+'px"></i>';
   for(var i=0;i<=n;i++){var v=lo+i*st0,big,mid;if(info.kind==='L'){big=v%100===0;mid=v%50===0}else{big=Math.abs(v%5)<1e-6;mid=Math.abs(v%1)<1e-6}
-    var cls=(big?'lab':mid?'m':'')+(info.low!=null&&v<info.low?' low':'')+(info.prev!=null&&Math.abs(v-info.prev)<st0/2?' prev':'');
+    var cls=(big?'lab':mid?'m':'')+((info.low!=null&&v<info.low)||(info.high!=null&&v>info.high)?' low':'')+(info.prev!=null&&Math.abs(v-info.prev)<st0/2?' prev':'');
     h+='<div class="tk '+cls+'">'+(big?'<span>'+(info.kind==='L'?fmtN(v):v)+'</span>':'')+'</div>'}
   h+='<i class="rpad" style="width:'+padW+'px"></i>';document.getElementById('rin').innerHTML=h;rulerTo(cur,false)}
 function rulerTo(v,smooth){if(!R.cfg)return;var i=Math.max(0,Math.min(R.cfg.n,Math.round((v-R.cfg.lo)/R.cfg.st)));R.last=i;R.lock=Date.now()+(smooth?450:120);
@@ -624,7 +632,7 @@ function rulerTo(v,smooth){if(!R.cfg)return;var i=Math.max(0,Math.min(R.cfg.n,Ma
 function sheetHTML(){return '<div class="scrim" id="scrim"></div><div class="sheet" id="sheet" data-m="slide" aria-hidden="true"><div class="grab"></div>'+
   '<div class="kh"><span class="nm" id="k-nm"></span><span class="lb" id="k-lb"></span><span class="steps" id="steps"></span></div>'+
   '<div class="disp"><div class="prev"><span id="k-pl">ครั้งก่อน</span><b id="k-prev">—</b></div><div class="big" id="k-big"></div></div>'+
-  '<div class="kmode" id="kmode"><button type="button" data-m="slide">⇆ เลื่อน · Slide</button><button type="button" data-m="type">⌨ พิมพ์ · Type</button></div>'+
+  '<div class="kwarn" id="k-warn" hidden></div><div class="kmode" id="kmode"><button type="button" data-m="slide">⇆ เลื่อน · Slide</button><button type="button" data-m="type">⌨ พิมพ์ · Type</button></div>'+
   '<div class="rulerw"><button type="button" class="kbtn" data-n="-1">−<small id="st-a">25</small></button><div class="ruler"><div class="rtrack" id="rtrack"><div class="rin" id="rin"></div></div><div class="needle2"></div></div><button type="button" class="kbtn" data-n="1">+<small id="st-b">25</small></button></div>'+
   '<div class="hint2" id="hint2"></div>'+
   '<div class="slidenx"><button type="button" class="kbtn" id="k-same" data-ok="same">ค่าเดิม ✓<small>Same as before</small></button><button type="button" class="nx" data-k="n">ถัดไป ›<small>Next</small></button></div>'+

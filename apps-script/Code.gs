@@ -309,24 +309,29 @@ function sysRates_(c) {
 function phoneLast(code) {
   const c = cfg_();
   if (String(code || '').trim() !== c.TEAM_CODE) return { ok: false, error: 'bad_code' };
-  const last = {}, put = (k, level, ts) => { if (!isFinite(level) || !isFinite(ts)) return; if (!last[k] || ts > last[k].ts) last[k] = { level: Math.round(Number(level)), ts: ts }; };
-  try { const txt = dbRead_(); if (txt) (JSON.parse(txt).records || []).forEach(r => { if (r && r.systemType && r.level != null) put(r.systemType, Number(r.level), Number(r.ts)); }); } catch (e) { }
+  const last = {}, temps = {}, scale = {};
+  const putT = (k, t, ts) => { if (t === '' || t == null || !isFinite(Number(t)) || !isFinite(ts)) return; if (!temps[k] || ts > temps[k].ts) temps[k] = { temp: Number(t), ts: ts }; };
+  const put = (k, level, ts, t) => { putT(k, t, ts); if (!isFinite(level) || !isFinite(ts)) return; if (!last[k] || ts > last[k].ts) last[k] = { level: Math.round(Number(level)), ts: ts }; };
+  try { const txt = dbRead_(); if (txt) { const db = JSON.parse(txt); (db.records || []).forEach(r => { if (r && r.systemType && r.level != null) put(r.systemType, Number(r.level), Number(r.ts), r.temperature); });
+    const sc = db.config && db.config.sys; if (sc) SYS.forEach(x => { const o = sc[x[0]]; if (o && isFinite(o.yMin) && isFinite(o.yMax)) scale[x[0]] = { lo: Number(o.yMin), hi: Number(o.yMax), low: isFinite(o.low) ? Number(o.low) : Number(o.yMin) }; }); } } catch (e) { }
   const ss = SpreadsheetApp.getActiveSpreadsheet(), ib = ss.getSheetByName(INBOX);
   if (ib && ib.getLastRow() > 1) rows_(ib.getRange(2, 1, ib.getLastRow() - 1, HEAD.length), HEAD).forEach(v => {
     const ts = tsBkk_(v[2], v[4], v[3], c); if (ts == null) return;
-    SYS.forEach(x => { const L = String(v[HEAD.indexOf(x[1])]).replace(/,/g, '').trim(); if (L !== '') put(x[0], Number(L), ts); });
+    SYS.forEach(x => { const L = String(v[HEAD.indexOf(x[1])]).replace(/,/g, '').trim(); if (L !== '') put(x[0], Number(L), ts, String(v[HEAD.indexOf(x[2])]).trim()); });
   });
   const ev = ss.getSheetByName(EVENTS);
   if (ev && ev.getLastRow() > 1) rows_(ev.getRange(2, 1, ev.getLastRow() - 1, HEAD_EV.length), HEAD_EV).forEach(v => {
     const ts = tsBkk_(v[HEAD_EV.indexOf('shiftDate')], v[HEAD_EV.indexOf('time')], v[HEAD_EV.indexOf('shift')], c), a = String(v[HEAD_EV.indexOf('afterL')]).replace(/,/g, '').trim();
     if (ts != null && a !== '') put(v[HEAD_EV.indexOf('system')], Number(a), ts);
   });
-  return { ok: true, last: last, rates: sysRates_(c) };
+  Object.keys(temps).forEach(k => { if (last[k]) { last[k].temp = temps[k].temp; last[k].tempTs = temps[k].ts; } else last[k] = { temp: temps[k].temp, tempTs: temps[k].ts }; });
+  return { ok: true, last: last, rates: sysRates_(c), scale: scale, tempHigh: tempHigh_(c) };
 }
+function tempHigh_(c) { const v = Number(c.TEMP_HIGH); return isFinite(v) && v > 0 ? v : 55; }
 function phoneBoot(code) {
   const c = cfg_(), ok = !!code && String(code).trim() === c.TEAM_CODE;
   return { ok: true, codeOk: ok, dayStart: c.DAY_START || '08:00', dayEnd: c.DAY_END || '20:00', machine: c.MACHINE || 'HRM Process',
-    recorders: ok ? recorders_(c) : [], members: ok ? members_(c) : [], version: SERVER_VER };
+    recorders: ok ? recorders_(c) : [], members: ok ? members_(c) : [], version: SERVER_VER, tempHigh: tempHigh_(c) };
 }
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 
@@ -452,6 +457,27 @@ function linePush_(text, flex) {
   if (r.code !== 200) { const e = 'LINE ' + r.code + ': ' + (r.body.message || ''); pr.setProperty('LINE_ERR', e); return { ok: false, error: 'line_' + r.code, message: r.body.message || '' }; }
   pr.setProperties({ LINE_ERR: '', LINE_LAST_AT: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss').slice(0, 16), LINE_LAST_MSG: String(text).slice(0, 300) });
   return { ok: true };
+}
+/* oil too hot (default above 55 °C, Config TEMP_HIGH): tell the LINE group straight away; never blocks saving */
+function tempAlert_(r, c) {
+  const lim = tempHigh_(c), hot = SYS.filter(x => r[x[2]] !== '' && r[x[2]] != null && isFinite(Number(r[x[2]])) && Number(r[x[2]]) > lim)
+    .map(x => ({ id: x[0], t: Number(r[x[2]]) }));
+  if (!hot.length || String(c.TEMP_ALERT || '1') === '0') return null;
+  const L = lineProps_(); if (!L.token || !L.group) return { list: hot, line: false };
+  const th = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'], d = String(r.shiftDate).split('-');
+  const when = (r.shift === 'night' ? 'กะดึก ' : 'กะเช้า ') + (+d[2]) + ' ' + th[+d[1] - 1] + ' ' + r.time;
+  const who = String(r.recorder || '').toUpperCase() + (r.team ? ' (ทีม ' + r.team + ')' : '');
+  const text = '🌡️ อุณหภูมิน้ำมันสูง เกิน ' + lim + ' °C\n' + hot.map(h => '• ' + SYS_FULL[h.id] + '  ' + h.t.toFixed(1) + ' °C').join('\n') + '\n' + when + ' · ' + who;
+  const row = h => ({ type: 'box', layout: 'horizontal', contents: [{ type: 'text', text: SYS_FULL[h.id], size: 'md', color: '#333333', flex: 3 },
+    { type: 'text', text: h.t.toFixed(1) + ' °C', size: 'lg', weight: 'bold', color: '#D9363C', align: 'end', flex: 2 }] });
+  const flex = { type: 'flex', altText: text.slice(0, 380), contents: { type: 'bubble', size: 'kilo',
+    header: { type: 'box', layout: 'vertical', backgroundColor: '#D9363C', paddingAll: '14px', contents: [
+      { type: 'text', text: '🌡️ อุณหภูมิน้ำมันสูง', color: '#FFFFFF', weight: 'bold', size: 'lg' },
+      { type: 'text', text: 'เกิน ' + lim + ' °C · ตรวจระบบระบายความร้อน', color: '#FFE3E3', size: 'xs' }] },
+    body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: hot.map(row).concat([{ type: 'separator', margin: 'md' },
+      { type: 'text', text: when + ' · ' + who, size: 'xs', color: '#888888', wrap: true, margin: 'md' }]) } } };
+  const res = linePush_(text, flex);
+  return { list: hot, line: !!res.ok };
 }
 /* rota "2026-10-27|AB,AB,CA" → team on a shift (A/B/C or '') */
 function calTeam_(c, shiftDate, shift) {   // per-date calendar (ROTA_CAL): team, '' = nobody works, null = date not in the calendar
@@ -647,7 +673,8 @@ function submitReading(code, r) {
       String(r.note || '').slice(0, 200), String(r.device || '').slice(0, 80), ''];
     appendText_(sh, row);
     if (r.replaces) linkReplaced_(String(r.replaces), r.id);
-    return { ok: true, id: r.id };
+    let hot = null; try { hot = tempAlert_(r, c); } catch (e) { }
+    return { ok: true, id: r.id, hot: hot };
   } finally { lock.releaseLock(); }
 }
 
@@ -676,7 +703,7 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.9.0';
+const SERVER_VER = 'v1.9.1';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   const p = PropertiesService.getScriptProperties();
