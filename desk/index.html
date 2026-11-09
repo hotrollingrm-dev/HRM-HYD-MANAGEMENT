@@ -1813,6 +1813,38 @@ html.tab.lime .app{margin:0;height:100%;border-radius:0;padding:8px}
 @keyframes chPop{from{opacity:0;transform:scale(.2)}}
 @media (prefers-reduced-motion:reduce){.ch-in *{animation:none!important}}
 html.lime .lane-chart svg .colhl{fill:#C6EF4E;fill-opacity:.25}
+
+/* daily status card */
+.d6-side{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0}
+.d6-side .tl3-card{flex:1;min-height:0}
+.dsr-card{flex:none;padding:14px 14px 12px}
+.dsr-card .card-head{margin-bottom:8px}
+.dsr-head,.dsr-row{display:grid;grid-template-columns:52px 1fr 1fr;gap:6px;align-items:center}
+.dsr-card .card-head{flex-wrap:nowrap}.dsr-card .card-head .icon-btn{width:36px;height:36px;min-height:36px;flex:none}
+.dsr-head{margin-bottom:4px}
+.dsr-sh{display:flex;align-items:center;gap:5px;padding:4px 5px;border-radius:12px;min-width:0}.dsr-sh svg{flex:none}
+.dsr-sh .bi{min-width:0;line-height:1.15}.dsr-sh .th{font-size:13px;font-weight:700;white-space:nowrap}.dsr-sh .en{display:none}
+.dsr-sh.day.now{background:rgba(224,120,0,.12)}.dsr-sh.night.now{background:rgba(63,68,201,.12)}
+.dsr-row{padding:5px 0;border-top:1px solid var(--line)}
+.dsr-n{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700}.dsr-n i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.dsr-c{display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;padding:5px 8px;border-radius:10px;background:var(--surface-2);font-size:13px;color:var(--fg-3);min-height:34px}
+.dsr-c b{font-size:15px;color:var(--fg)}.dsr-c small{font-size:11px;color:var(--fg-2)}.dsr-c i{font-style:normal;font-weight:700;font-size:11px;color:var(--leak)}
+.dsr-c.ok{box-shadow:inset 3px 0 0 var(--run)}
+.dsr-c.abn{box-shadow:inset 3px 0 0 var(--leak);background:var(--leak-soft)}
+.dsr-c.hot{box-shadow:inset 3px 0 0 #D9363C}.dsr-c.hot small{color:#D9363C;font-weight:700}
+.dsr-c.miss{color:var(--leak);font-weight:700;background:var(--leak-soft)}
+.dsr-c.wait{color:var(--abn);font-weight:600}
+.dsr-sum{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.dsr-k{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700;background:var(--surface-2);color:var(--fg-2)}
+.dsr-k.ok{background:var(--run-soft);color:var(--run)}.dsr-k.miss,.dsr-k.abn{background:var(--leak-soft);color:var(--leak)}.dsr-k.hot{background:rgba(217,54,60,.1);color:#D9363C}.dsr-k.ref{background:rgba(11,139,112,.12);color:var(--refill)}
+html.lime .dsr-k.ok{background:#C6EF4E;color:#0E0F0C}
+html.lime .dsr-c{background:#F1F2EA}
+html.tab .d6-side{display:none}
+/* lime duotone line icons */
+.lil .ac{fill:#C6EF4E;stroke:none}
+html.lime .nav-item.on .lil .ac{fill:#fff}
+html.lime .btn-primary .lil .ac,html.lime .sidebar .lil .ac{fill:#C6EF4E;opacity:.9}
+html.lime .shseg button.on .lil .ac,html.lime .mseg button.on .lil .ac{fill:#C6EF4E}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="icon-defs"></defs></svg>
@@ -1977,7 +2009,42 @@ const LI={
   file:'<path d="M6.5 3.5h7.5l4 4v13h-11.5z"/><path d="M13.5 3.5v4.5H18"/>', sheet:'<rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M4 9.5h16M4 15h16M10 4v16"/>',
   refresh:'<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v4.5h-4.5"/>'
 };
-const li=(k,s)=>`<svg width="${s||24}" height="${s||24}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LI[k]}</svg>`;
+/* lime theme line icons: ink outline + one lime accent shape behind it (duotone) */
+const LI2={
+  temp:'<circle class="ac" cx="12" cy="17" r="3.2"/><path d="M10 14.4V5.6a2 2 0 0 1 4 0v8.8a4.3 4.3 0 1 1-4 0z"/><path d="M12 9.6v7"/><path d="M17 6h2.4M17 9.6h1.6"/>',
+  oil:'<path class="ac" d="M6.6 14.6h10.8a5.4 5.4 0 0 1-10.8 0z"/><path d="M12 3.6C8.4 8.2 5.8 11.6 5.8 14.7a6.2 6.2 0 0 0 12.4 0c0-3.1-2.6-6.5-6.2-11.1z"/>',
+  both:'<path class="ac" d="M3.8 15.2h8.4a4.2 4.2 0 0 1-8.4 0z"/><path d="M8 6.4c-2.6 3.3-4.4 5.8-4.4 8a4.4 4.4 0 0 0 8.8 0c0-2.2-1.8-4.7-4.4-8z"/><path d="M16.6 13.6V5.4a1.7 1.7 0 0 1 3.4 0v8.2a3.4 3.4 0 1 1-3.4 0z"/>',
+  bell:'<circle class="ac" cx="12" cy="19.4" r="2.4"/><path d="M6 16.6V11a6 6 0 0 1 12 0v5.6l1.6 1.6H4.4z"/><path d="M12 3.4v1.4"/>',
+  warning:'<path class="ac" d="M12 6.2l6.6 11.6H5.4z"/><path d="M10.3 4.2a2 2 0 0 1 3.4 0l7.4 13a2 2 0 0 1-1.7 3H4.6a2 2 0 0 1-1.7-3z"/><path d="M12 9.6v4"/><path d="M12 16.8v.2"/>',
+  critical:'<path class="ac" d="M9 5.6h6l3.4 3.4v6L15 18.4H9L5.6 15V9z"/><path d="M8.3 3.4h7.4l4.9 4.9v7.4l-4.9 4.9H8.3l-4.9-4.9V8.3z"/><path d="M12 8v5"/><path d="M12 16.2v.2"/>',
+  monthly:'<path class="ac" d="M4 5.6h16v4.2H4z"/><rect x="3.6" y="5" width="16.8" height="15.4" rx="2.6"/><path d="M8 3v4M16 3v4M3.6 9.8h16.8"/><path d="M7.6 13.4h1.6M11.2 13.4h1.6M14.8 13.4h1.6M7.6 16.8h1.6M11.2 16.8h1.6"/>',
+  tag:'<circle class="ac" cx="8.4" cy="8.4" r="2.6"/><path d="M3.6 4.8v6l9.4 9.4a1.6 1.6 0 0 0 2.3 0l4.9-4.9a1.6 1.6 0 0 0 0-2.3L10.8 3.6h-6a1.2 1.2 0 0 0-1.2 1.2z"/><circle cx="8.4" cy="8.4" r="1.2"/>',
+  up:'<circle class="ac" cx="18" cy="7" r="3.4"/><path d="M3.6 17.4l5.6-5.6 3.8 3.8 6.4-7.6"/><path d="M15 7.4h4.4v4.4"/>',
+  down:'<circle class="ac" cx="18" cy="17" r="3.4"/><path d="M3.6 6.6l5.6 5.6 3.8-3.8 6.4 7.6"/><path d="M15 16.6h4.4v-4.4"/>',
+  upload:'<path class="ac" d="M4.4 15.6h15.2v3a1.8 1.8 0 0 1-1.8 1.8H6.2a1.8 1.8 0 0 1-1.8-1.8z"/><path d="M4 14.6v4a2.2 2.2 0 0 0 2.2 2.2h11.6a2.2 2.2 0 0 0 2.2-2.2v-4"/><path d="M12 15V3.8M7.6 8.2L12 3.8l4.4 4.4"/>',
+  save:'<path class="ac" d="M7.6 4.2h8v4.6h-8z"/><path d="M5.6 3.6h10.6l4.2 4.2v10.6a2 2 0 0 1-2 2H5.6a2 2 0 0 1-2-2V5.6a2 2 0 0 1 2-2z"/><path d="M7.6 3.6v5h8v-5"/><rect x="7.4" y="13" width="9.2" height="7.4" rx="1"/>',
+  running:'<circle class="ac" cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="8.6"/><path d="M10.2 8.6v6.8l5.4-3.4z"/>',
+  stopped:'<circle class="ac" cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="8.6"/><rect x="9" y="9" width="6" height="6" rx="1.2"/>',
+  dashboard:'<rect class="ac" x="13.4" y="3.8" width="6.8" height="7.4" rx="2"/><rect x="3.8" y="3.8" width="6.8" height="9.6" rx="2"/><rect x="13.4" y="3.8" width="6.8" height="7.4" rx="2"/><rect x="3.8" y="16.2" width="6.8" height="4" rx="2"/><rect x="13.4" y="13.8" width="6.8" height="6.4" rx="2"/>',
+  history:'<circle class="ac" cx="12.6" cy="12" r="5.6"/><path d="M4 12a8.4 8.4 0 1 0 2.4-5.9"/><path d="M4 4.2v4h4"/><path d="M12.6 8v4.4l2.8 1.8"/>',
+  events:'<circle class="ac" cx="5.6" cy="6.4" r="2.2"/><circle class="ac" cx="5.6" cy="12" r="2.2"/><circle class="ac" cx="5.6" cy="17.6" r="2.2"/><path d="M10 6.4h10M10 12h10M10 17.6h6.4"/><circle cx="5.6" cy="6.4" r="1.2"/><circle cx="5.6" cy="12" r="1.2"/><circle cx="5.6" cy="17.6" r="1.2"/>',
+  reports:'<path class="ac" d="M8.4 12.6h2.4v5H8.4zM12.4 10h2.4v7.6h-2.4z"/><path d="M6.2 3.4h8l4.4 4.4v11.6a1.8 1.8 0 0 1-1.8 1.8h-10.6a1.8 1.8 0 0 1-1.8-1.8V5.2a1.8 1.8 0 0 1 1.8-1.8z"/><path d="M14 3.6v4.4h4.4"/><path d="M8.4 17.6v-4.6M12.4 17.6V10M16.2 17.6v-3"/>',
+  export:'<path class="ac" d="M4.6 10.6h9.8v9.4H6.4a1.8 1.8 0 0 1-1.8-1.8z"/><path d="M14.4 4h5.6v5.6M20 4l-8.6 8.6"/><path d="M18.8 13.6v4.6a2 2 0 0 1-2 2H5.8a2 2 0 0 1-2-2V7.2a2 2 0 0 1 2-2h4.6"/>',
+  settings:'<circle class="ac" cx="9" cy="6.6" r="2.6"/><circle class="ac" cx="15.6" cy="12" r="2.6"/><circle class="ac" cx="7.6" cy="17.4" r="2.6"/><path d="M3.6 6.6h3M11.4 6.6h9M3.6 12h9.6M18 12h2.4M3.6 17.4h1.6M10 17.4h10.4"/><circle cx="9" cy="6.6" r="2.2"/><circle cx="15.6" cy="12" r="2.2"/><circle cx="7.6" cy="17.4" r="2.2"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  minus:'<path d="M5 12h14"/>',
+  close:'<path d="M6.4 6.4l11.2 11.2M17.6 6.4L6.4 17.6"/>',
+  edit:'<path class="ac" d="M14.6 6.4l3 3-8.8 8.8-3.6.6.6-3.6z"/><path d="M15.8 4.4a2.1 2.1 0 0 1 3 3L8.4 17.8l-4.2 1 1-4.2z"/><path d="M13.8 6.4l3 3"/>',
+  trash:'<path class="ac" d="M7 8.4h10l-.8 10.6H7.8z"/><path d="M4.4 6.6h15.2M9.4 6.6V4.6h5.2v2"/><path d="M6.4 6.6l.9 12.6a1.6 1.6 0 0 0 1.6 1.4h6.2a1.6 1.6 0 0 0 1.6-1.4l.9-12.6"/><path d="M10.2 10.6v6M13.8 10.6v6"/>',
+  check:'<path d="M5 12.6l4.4 4.4L19 7.4"/>',
+  expand:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+  shrink:'<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
+  back:'<path d="M14.6 5.4L8 12l6.6 6.6"/>',
+  eye:'<circle class="ac" cx="12" cy="12" r="3.6"/><path d="M2.6 12S6 5.6 12 5.6 21.4 12 21.4 12 18 18.4 12 18.4 2.6 12 2.6 12z"/><circle cx="12" cy="12" r="2.6"/>',
+  file:'<path class="ac" d="M7.6 12.4h8.8v6.2H7.6z"/><path d="M6.2 3.4h8l4.4 4.4v11.6a1.8 1.8 0 0 1-1.8 1.8h-10.6a1.8 1.8 0 0 1-1.8-1.8V5.2a1.8 1.8 0 0 1 1.8-1.8z"/><path d="M14 3.6v4.4h4.4"/>',
+  sheet:'<path class="ac" d="M4.2 4.2h15.6v4.4H4.2z"/><rect x="3.6" y="3.6" width="16.8" height="16.8" rx="2.4"/><path d="M3.6 8.8h16.8M3.6 14h16.8M9.4 8.8v11.6"/>',
+  refresh:'<circle class="ac" cx="12" cy="12" r="4.8"/><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v4.5h-4.5"/>'};
+const li=(k,s)=>{const L2=document.documentElement.classList.contains('lime')&&LI2[k];return `<svg${L2?' class="lil"':''} width="${s||24}" height="${s||24}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${L2?1.9:2}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${L2||LI[k]}</svg>`};
 
 //---------------------------------------------------------------------
 //
@@ -4412,7 +4479,7 @@ fromPhone:['มือถือ','Phone','スマホ'],
  preview:['ดูตัวอย่างรายงาน','Report Preview','レポートプレビュー'],excelSheets:['ชีตในไฟล์ Excel','Excel sheets','Excelシート'],reportTitle:['รายงานระดับน้ำมัน','Oil Level Report','油量レポート'],generated:['สร้างเมื่อ','Generated','作成日時'],machine:['เครื่องจักร','Machine','設備'],period:['ช่วงเวลา','Period','期間'],systems:['ระบบ','Systems','系統'],
  general:['ทั่วไป','General','一般'],language:['ภาษา','Language','言語'],primaryLang:['ภาษาหลัก','Primary Language','主言語'],thai:['ไทย','Thai','タイ語'],locked:['ล็อกไว้','Locked','固定'],secondaryLang:['ภาษาที่แสดงคู่กับภาษาไทย','Secondary Language','併記言語'],
  machineName:['ชื่อเครื่องจักร / ไลน์','Machine / Line','設備・ライン名'],defaultOperator:['ผู้บันทึกเริ่มต้น','Default Recorder','既定の記録者'],gapHours:['ห่างเกินกี่ชั่วโมงถือว่าไม่มีข้อมูล','Missing-data Gap (hours)','欠測とみなす間隔 (時間)'],
- levelConfig:['ตั้งค่าระดับน้ำมัน','Oil Level Configuration','油量設定'],yMin:['ระดับต่ำสุดของกราฟ (L)','Minimum Level (L)','最小値 (L)'],yMax:['ระดับสูงสุดของกราฟ (L)','Maximum Level (L)','最大値 (L)'],majorStep:['สเกลหลัก (L)','Main Scale Step (L)','主目盛 (L)'],minorStep:['สเกลย่อย (L)','Minor Scale Step (L)','補助目盛 (L)'],swingSec:['การใช้น้ำมันระหว่างรีด (สวิง)','Level swing while rolling','圧延中の油面変動'],swingMin:['สวิงต่ำสุด (L)','Swing min (L)','変動 最小 (L)'],swingMax:['สวิงสูงสุด (L)','Swing max (L)','変動 最大 (L)'],swingHint:['ระหว่างรีด ระดับน้ำมันลดลงในช่วงนี้ถือว่าปกติ · ลดเกินค่าสูงสุดจึงนับเป็นลดผิดปกติและต้องระบุสาเหตุ (ใช้ทั้งคอมและมือถือ)','While rolling, a drop within this range is normal; a drop above the max counts as abnormal and needs a reason (PC and phones)','この範囲の低下は正常、最大値を超えると異常'],tHighL:['แจ้งเตือนอุณหภูมิสูงเกิน (°C)','High temp alert above (°C)','高温警報 (°C)'],lowThreshold:['เกณฑ์ระดับต่ำ (L)','Low Level Threshold (L)','下限しきい値 (L)'],warnDistance:['ระยะเตือนล่วงหน้า (L)','Warning Distance (L)','注意範囲 (L)'],normalRate:['อัตราใช้ปกติ (L/ชม.)','Normal Rate (L/h)','通常消費 (L/h)'],alertRate:['แจ้งเตือนลดผิดปกติ (L/ชม.)','Abnormal Alert Rate (L/h)','異常警報 (L/h)'],
+ levelConfig:['ตั้งค่าระดับน้ำมัน','Oil Level Configuration','油量設定'],yMin:['ระดับต่ำสุดของกราฟ (L)','Minimum Level (L)','最小値 (L)'],yMax:['ระดับสูงสุดของกราฟ (L)','Maximum Level (L)','最大値 (L)'],majorStep:['สเกลหลัก (L)','Main Scale Step (L)','主目盛 (L)'],minorStep:['สเกลย่อย (L)','Minor Scale Step (L)','補助目盛 (L)'],dsrCopied:['คัดลอกสรุปประจำวันแล้ว วางใน LINE ได้เลย','Daily summary copied','日報をコピーしました'],swingSec:['การใช้น้ำมันระหว่างรีด (สวิง)','Level swing while rolling','圧延中の油面変動'],swingMin:['สวิงต่ำสุด (L)','Swing min (L)','変動 最小 (L)'],swingMax:['สวิงสูงสุด (L)','Swing max (L)','変動 最大 (L)'],swingHint:['ระหว่างรีด ระดับน้ำมันลดลงในช่วงนี้ถือว่าปกติ · ลดเกินค่าสูงสุดจึงนับเป็นลดผิดปกติและต้องระบุสาเหตุ (ใช้ทั้งคอมและมือถือ)','While rolling, a drop within this range is normal; a drop above the max counts as abnormal and needs a reason (PC and phones)','この範囲の低下は正常、最大値を超えると異常'],tHighL:['แจ้งเตือนอุณหภูมิสูงเกิน (°C)','High temp alert above (°C)','高温警報 (°C)'],lowThreshold:['เกณฑ์ระดับต่ำ (L)','Low Level Threshold (L)','下限しきい値 (L)'],warnDistance:['ระยะเตือนล่วงหน้า (L)','Warning Distance (L)','注意範囲 (L)'],normalRate:['อัตราใช้ปกติ (L/ชม.)','Normal Rate (L/h)','通常消費 (L/h)'],alertRate:['แจ้งเตือนลดผิดปกติ (L/ชม.)','Abnormal Alert Rate (L/h)','異常警報 (L/h)'],
  zoneFormula:['โซนใกล้ต่ำ = เกณฑ์ต่ำ ถึง เกณฑ์ต่ำ + ระยะเตือน','Warning zone = low threshold to low threshold + warning distance','注意ゾーン = 下限 〜 下限 + 注意範囲'],
  oilTypes:['ชนิดน้ำมัน','Oil Types','油種'],tankSizeL:['ขนาดถัง (L)','Tank Size (L)','缶容量 (L)'],priceTankTHB:['ราคาต่อถัง (บาท)','Price per Tank (THB)','1缶あたり価格 (バーツ)'],
  systemSec:['ระบบ','System','システム'],notifications:['การแจ้งเตือน','Notifications','通知'],notifAlerts:['แจ้งเตือนเมื่อระดับต่ำหรือลดผิดปกติ','Alert on low level or abnormal drop','低油量・異常減少を通知'],data:['ข้อมูล','Data','データ'],dataInfo:['เก็บไว้ในเบราว์เซอร์นี้ · {r} บันทึก · {e} เหตุการณ์','Stored in this browser · {r} readings · {e} events','このブラウザに保存 · 記録 {r} 件 · イベント {e} 件'],
@@ -4977,6 +5044,29 @@ function laneHeadHTML(id){const c=sc(id),q=tc(id);const lr=lastRecShift(id);cons
   return `${/(^| )(panel|lime)( |$)/.test(document.documentElement.className)?miniTank(id,lr?lr.level:null):'<span class="sys-dot"></span>'}<span class="lane-name">${esc(T('sys_'+id))}</span><button type="button" class="icon-btn zoom-btn" data-act="zoomOpen" data-sys="${id}" title="${esc(TS('zoomBtn'))} · ${esc(TS('zoomDbl'))}" aria-label="${esc(TS('zoomBtn'))}">${li('expand',18)}</button><span class="lane-oil">${esc(systemOilMapping[id])}</span>
       <span class="lane-cur">${L('latest','lc-k')}<b class="num lc-oil" title="${esc(TS('oilLevel'))}">${lr?fLit(lr.level):'—'}<small> L</small></b><span class="lc-temp" title="${esc(TS('temperature'))}">${li('temp',16)}<b class="num">${lr&&lr.temperature!=null?fTemp(lr.temperature):'—'}<small> °C</small></b></span>${stStatus(st)}${lr?`<span class="lc-t num">${esc(T('updated'))} ${sod(lr.ts)===sod(Date.now())?'':fDs(lr.ts)+' '}${fT(lr.ts)} · ${esc(T(shiftKey(lr.ts)==='day'?'dayShift':'nightShift'))}</span>`:''}</span>
       <span class="lane-scale num">${m!=='temperature'?`${fN(c.yMin)}–${fN(c.yMax)} L · ${esc(T('lowLine'))} ${fN(c.low)}`:''}${m==='both'?' · ':''}${m!=='oil'?`${q.min}–${q.max} °C`:''}</span>`}
+/* daily status: today's two shifts, every system's reading, and what happened today */
+function dsrData(){const now=Date.now(),sd=shiftDateTs(now),sds=ymd(sd),ds=hm(SHIFT_CFG.dayStart),de=hm(SHIFT_CFG.dayEnd);
+  const start={day:sd+ds*MIN,night:sd+de*MIN},end={day:sd+de*MIN,night:sd+DAY+ds*MIN};
+  const cell=(id,k)=>{const r=shiftRec(id,sd,k);if(r){const a=abnOf(id,r),hot=r.temperature!=null&&r.temperature>T_HIGH(id);return {st:a?'abn':hot?'hot':'ok',r,a,hot}}
+    return {st:now>=end[k]?'miss':now>=start[k]?'wait':'later'}};
+  const rows=SYS_IDS.map(id=>({id,day:cell(id,'day'),night:cell(id,'night')}));
+  const ev=EVTS.filter(e=>shiftDateTs(e.ts)===sd&&e.eventType!=='low');
+  const refL=ev.filter(e=>e.eventType==='refill').reduce((a,e)=>a+(+e.addedVolume||0),0);
+  const n=k=>rows.filter(x=>x.day.st===k).length+rows.filter(x=>x.night.st===k).length;
+  return {sd,sds,team:{day:rotaTeam(sds,'day'),night:rotaTeam(sds,'night')},cur:shiftKey(now),rows,ev,refL,done:6-n('miss')-n('wait')-n('later'),miss:n('miss'),abn:n('abn'),hot:n('hot')}}
+function dsrCardHTML(){const D=dsrData();
+  const cellH=c=>{if(!c.r)return `<span class="dsr-c ${c.st}">${c.st==='miss'?'ขาด':c.st==='wait'?'รอบันทึก':'—'}</span>`;
+    return `<span class="dsr-c ${c.st}" title="${esc(fT(c.r.ts))}${c.r.operator?' · '+esc(c.r.operator):''}"><b class="num">${fN(c.r.level)}</b><small class="num">${c.r.temperature!=null?fTemp(c.r.temperature)+'°':''}</small>${c.a?`<i>▼${c.a.drop}</i>`:''}</span>`};
+  const sh=k=>`<div class="dsr-sh ${k}${D.cur===k?' now':''}">${ico(k,22)}<span class="bi"><span class="th">${k==='day'?'เช้า':'ดึก'}${D.team[k]?' · '+esc(D.team[k]):''}</span><span class="en">${k==='day'?SHIFT_CFG.dayStart+'–'+SHIFT_CFG.dayEnd:SHIFT_CFG.dayEnd+'–'+SHIFT_CFG.dayStart}</span></span></div>`;
+  const chips=[`<span class="dsr-k ok">${li('check',14)}บันทึก ${D.done}/6</span>`,D.miss?`<span class="dsr-k miss">ขาด ${D.miss}</span>`:'',D.abn?`<span class="dsr-k abn">▼ ลดผิดปกติ ${D.abn}</span>`:'',D.hot?`<span class="dsr-k hot">${li('temp',14)}ร้อนเกิน ${D.hot}</span>`:'',D.refL?`<span class="dsr-k ref">เติม +${fN(D.refL)} L</span>`:'',D.ev.filter(e=>e.eventType==='leak').length?`<span class="dsr-k abn">รั่ว ${D.ev.filter(e=>e.eventType==='leak').length}</span>`:''].join('');
+  return `<div class="card dsr-card glass-card"><div class="card-head"><span class="bi card-title"><span class="th">รายงานประจำวัน</span><span class="en">Daily status · ${fDth(D.sd)}</span></span><button type="button" class="icon-btn" data-act="dsrCopy" title="คัดลอกสรุปไปวางใน LINE · Copy summary" aria-label="คัดลอกสรุป">${li('file',20)}</button></div>
+    <div class="dsr-head"><span></span>${sh('day')}${sh('night')}</div>
+    ${D.rows.map(x=>`<div class="dsr-row" style="--c:var(--s-${x.id})"><span class="dsr-n"><i></i>${({servo:'Servo',auxiliary:'Aux',lubrication:'Lube'})[x.id]}</span>${cellH(x.day)}${cellH(x.night)}</div>`).join('')}
+    <div class="dsr-sum">${chips}</div></div>`}
+function dsrText(){const D=dsrData(),line=(c)=>c.r?fN(c.r.level)+' L'+(c.r.temperature!=null?' / '+fTemp(c.r.temperature)+'°C':'')+(c.a?' ▼'+c.a.drop:'')+(c.hot?' (ร้อน)':''):(c.st==='miss'?'ขาด':c.st==='wait'?'รอ':'-');
+  return ['รายงานประจำวัน '+fDth(D.sd)+' · '+(CFG.machine||'HRM'),'กะเช้า'+(D.team.day?' ทีม '+D.team.day:'')+' | กะดึก'+(D.team.night?' ทีม '+D.team.night:''),
+    ...D.rows.map(x=>T('short_'+x.id)+': เช้า '+line(x.day)+' | ดึก '+line(x.night)),
+    'บันทึกแล้ว '+D.done+'/6'+(D.miss?' · ขาด '+D.miss:'')+(D.abn?' · ลดผิดปกติ '+D.abn:'')+(D.hot?' · ร้อนเกิน '+D.hot:'')+(D.refL?' · เติม +'+fN(D.refL)+' L':'')].join('\n')}
 function tlCardHTML(mev,open){const tevs=mev.slice().sort((x,z)=>z.ts-x.ts).slice(0,10);
   const abn=open.length?`<button class="abn-chip" data-act="confirmAbn" data-id="${open[0].id}" title="${esc(TS('confirmCause'))}">${ico('abnormal',30)}${L('pendingAbn',null,{n:open.length})}</button>`:'';
   return `<div class="card tl3-card glass-card"><div class="card-head">${L('latestEvents','tl3-title')}<button class="link-btn sm" data-act="nav" data-page="events" title="${esc(TS('viewAll'))}">${esc(T('viewAll'))}</button></div>${abn}<div class="list-scroll"><div class="tl3">${tevs.map(e=>`<button class="tl3-item" data-act="evDetail" data-id="${e.id}" style="--c:var(--s-${e.systemType})">${ico(e.eventType,32)}<span class="tl3-body"><span class="tl3-top"><b>${esc(T('ev_'+e.eventType))}</b><span class="num">${sod(e.ts)===sod(Date.now())?fT(e.ts):fDs(e.ts)}</span></span><span class="tl3-en">${esc(S2('ev_'+e.eventType))}</span><span class="tl3-sub"><i></i>${esc(T('short_'+e.systemType))} · <span class="num">${evLine(e)}</span></span></span></button>`).join('')||`<div class="empty">${L('noEventsMonth')}</div>`}</div></div></div>`}
@@ -5003,7 +5093,7 @@ function vDashboard(){
       <div class="lane-chart" data-sys="${id}" data-shift="${UI.shift}" data-metric="${UI.metric}" data-days="${days.join(',')}"></div></div>`).join('');
   const graph=`<div class="card graph-card glass-card"><div class="card-head">${graphHeadHTML()}</div><div class="lanes">${lanes}</div></div>`;
   const tl=tlCardHTML(mev,open);
-  return `<div class="dash6">${top}<div class="d6-main">${graph}${tl}</div></div>`;
+  return `<div class="dash6">${top}<div class="d6-main">${graph}<div class="d6-side">${dsrCardHTML()}${tl}</div></div></div>`;
 }
 
 /* ================= history ================= */
@@ -5568,6 +5658,7 @@ function readSettings(){let ok=true;const errs=[];const num=(id)=>{const el=$(id
   {const re=$('#err-members');if(re){const l=memDraft();const bad=!l.length;re.innerHTML=bad?L('errMembersEmpty'):'';re.hidden=!bad;if(bad)ok=false}}
   return {ok,nc,nt,prices,monthly}}
 const A={
+  dsrCopy:()=>{const t=dsrText();const done=()=>toast('brand','dsrCopied','');try{navigator.clipboard.writeText(t).then(done,()=>{prompt('',t)})}catch(e){prompt('',t)}},
   nav:t=>{const go=()=>{UI.page=t.dataset.page;saveUI();render(true,true);closeModal()};if(pageForm()&&hasUnsaved()&&t.dataset.page!==UI.page){askUnsaved(go,'leaveQ');return}go()},
   toggleSb:()=>{UI.sb=$('#app').dataset.sb==='collapsed'?'expanded':'collapsed';$('#app').dataset.sb=UI.sb;saveUI();hideTip()},
   fullscreen:()=>{if(PYW()&&PYW().toggle_fullscreen){PYW().toggle_fullscreen();return}const d=document;const fail=()=>toast('adjust','fullscreen',TS('fsFail'));try{if(!d.fullscreenElement){const p=d.documentElement.requestFullscreen&&d.documentElement.requestFullscreen();if(p&&p.catch)p.catch(fail);else if(!p)fail()}else d.exitFullscreen()}catch(e){fail()}},
