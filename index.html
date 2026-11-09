@@ -171,6 +171,12 @@ textarea{width:100%;min-height:84px;border:1px solid var(--well-line);border-rad
 .vnum .vk{display:block;font-size:11.5px;color:var(--fg3)}.vnum b{display:block;font-size:28px;line-height:1.15;color:#fff}.vnum .vd{display:block;font-size:12.5px;color:var(--run);font-family:Chakra,Plex,sans-serif;font-weight:600}
 .pour{stroke-dasharray:10 7;opacity:0;transition:opacity 250ms}.pour.on{opacity:1;animation:pour 420ms linear infinite}
 @keyframes pour{to{stroke-dashoffset:-17}}
+.svi{display:inline-block;vertical-align:-3px;flex:none}
+.kmode button .svi{color:var(--pri);margin-right:2px}.kmode button[aria-pressed="false"] .svi{color:var(--fg3)}
+.kwarn{display:flex;align-items:center;gap:8px}.kwarn .svi{color:var(--bad);filter:drop-shadow(0 0 4px rgba(255,90,95,.6))}
+.slidenx .kbtn .svi{color:var(--run);margin-right:4px;filter:drop-shadow(0 0 4px rgba(67,224,138,.5))}
+.nx .svi{vertical-align:-2px}.keys .bk .svi{color:var(--stop)}
+.hotb{color:#FF8A8D;display:inline-flex;align-items:center;gap:6px}.hotb .svi{filter:drop-shadow(0 0 4px rgba(255,90,95,.6))}
 /* ---------- 3 hydraulic columns ---------- */
 .tanks3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
 .col{position:relative;border-radius:12px;padding:8px 5px 7px;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(0,0,0,.12));border:1px solid rgba(255,255,255,.05);transition:box-shadow 250ms var(--ease-enter),border-color 250ms}
@@ -310,7 +316,7 @@ function drops(){var ts=readTs(document.getElementById('f-date')?document.getEle
 function dropUI(clicked){try{paintCols()}catch(_){}var c=document.getElementById('drop-card');if(!c)return;var l=st.mode==='act'?[]:drops();c.hidden=!l.length;if(!l.length){return}
   document.getElementById('drop-list').innerHTML=l.map(function(x){return '<div class="drop-it"><b>'+esc(x.name)+'</b><span>'+x.from+' → '+(x.from-x.drop)+' L · ลด '+x.drop+' L ใน '+x.hrs+' ชม. ('+x.rate+' L/ชม.)</span></div>'}).join('');
   var tx=document.getElementById('f-droptext');tx.hidden=st.drop!=='other';if(clicked&&st.drop==='other')tx.focus()}
-var PAGE_VER='v1.9.3';
+var PAGE_VER='v1.9.4';
 /* the team comes from the recorder's name (Settings → Members & teams on the PC) */
 function teamOf(n){var k=String(n||'').toUpperCase(),l=BOOT.members||[];for(var i=0;i<l.length;i++)if(l[i].name===k)return l[i].team||'';return ''}
 function teamShow(){var t=teamOf(document.getElementById('f-rec')?document.getElementById('f-rec').value:''),el=document.getElementById('team-badge');st.team=t;if(el){el.textContent=t?'ทีม '+t+' · Team '+t:'ทีมจะขึ้นเองตามชื่อ';el.className='team-badge'+(t?' on':'')}}
@@ -479,7 +485,7 @@ function send(){showErr('');[].forEach.call(document.querySelectorAll('.bad'),fu
   flush(true).then(function(okN){b.disabled=false;b.innerHTML=sendLabel();paintCols();var sum=SYS.filter(function(s){return r[s[2]]!==''}).map(function(s){return s[0]==='servo'?'Servo '+r.servoL:(s[0]==='auxiliary'?'Aux '+r.auxL:'Lube '+r.lubL)}).join(' · ');
     if(queue().some(function(x){return x.id===r.id}))pop('เก็บไว้ในเครื่องแล้ว','ยังส่งไม่ได้ (ไม่มีสัญญาณ) ระบบจะส่งให้อัตโนมัติเมื่อมีเน็ต<br>'+esc(thDate(r.shiftDate))+' '+(r.shift==='day'?'กะเช้า':'กะดึก')+' '+r.time);
     else pop('ส่งข้อมูลเรียบร้อย',esc(thDate(r.shiftDate))+' · '+(r.shift==='day'?'กะเช้า':'กะดึก')+' '+r.time+' · Team '+r.team+'<br>'+esc(sum)+' L'+hotNote(r))})}
-function hotNote(r){var h=SYS.filter(function(s){return r[s[3]]!==''&&+r[s[3]]>tHigh(s[0])});return h.length?'<br><b style="color:#FF8A8D">🌡️ อุณหภูมิสูงเกินเกณฑ์: '+h.map(function(s){return SYSC[s[0]][0]+' '+r[s[3]]+' °C (เกณฑ์ '+tHigh(s[0])+')'}).join(', ')+'</b><br>ระบบแจ้งกลุ่ม LINE ให้แล้ว':''}
+function hotNote(r){var h=SYS.filter(function(s){return r[s[3]]!==''&&+r[s[3]]>tHigh(s[0])});return h.length?'<br><b class="hotb">'+SVI(IC2.temp,16)+' อุณหภูมิสูงเกินเกณฑ์: '+h.map(function(s){return SYSC[s[0]][0]+' '+r[s[3]]+' °C (เกณฑ์ '+tHigh(s[0])+')'}).join(', ')+'</b><br>ระบบแจ้งกลุ่ม LINE ให้แล้ว':''}
 function checkTime(time){var m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);if(!m)return 'bad_time';var mins=+m[1]*60+ +m[2],ds=hm(BOOT.dayStart),de=hm(BOOT.dayEnd);
   if(st.shift==='day'?!(mins>=ds&&mins<de):!(mins>=de||mins<ds))return 'time_shift';return ''}
 function sendAct(){var rec=val('f-rec').toUpperCase(),time=val('f-time'),date=document.getElementById('f-date').value,t=st.act,A=actOf();
@@ -549,6 +555,12 @@ function hidePop(){document.getElementById('pop').style.display='none'}
 function logout(){LS.del('code');BOOT.code='';keepUrl('');gate('')}
 window.addEventListener('online',function(){flush(false)});
 setInterval(function(){if(queue().length)flush(false)},30000);
+var SVI=function(p,w){return '<svg class="svi" width="'+(w||18)+'" height="'+(w||18)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>'};
+var IC2={temp:'<path d="M10 14.6V5.5a2 2 0 0 1 4 0v9.1a4.2 4.2 0 1 1-4 0z"/><path d="M12 10v7" stroke-width="2.6"/><circle cx="12" cy="17.6" r="1.6" fill="currentColor"/>',
+  slide:'<path d="M3 12h18"/><path d="M7 8l-4 4 4 4M17 8l4 4-4 4"/><path d="M12 6v12" stroke-width="1.4" opacity=".6"/>',
+  keys:'<rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M6.5 9.5h1M10.5 9.5h1M14.5 9.5h1M6.5 13h1M10.5 13h1M14.5 13h3M8 16h8"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5" stroke-width="2.6"/>',back:'<path d="M9 5h10.5A1.5 1.5 0 0 1 21 6.5v11a1.5 1.5 0 0 1-1.5 1.5H9l-6-7z"/><path d="M12 9.5l5 5M17 9.5l-5 5"/>',
+  next:'<path d="M9 5l7 7-7 7" stroke-width="2.6"/>'};
 /* ===== control-panel look: 3 tank columns + slide ruler / keypad sheet ===== */
 var SCALE={servo:{lo:4500,hi:6500,low:5000},auxiliary:{lo:4500,hi:5750,low:4500},lubrication:{lo:3500,hi:5750,low:3500}};
 var SYSC={servo:['SERVO','#5B9BFF'],auxiliary:['AUX','#2FD3C0'],lubrication:['LUB','#FFB547']};
@@ -621,7 +633,7 @@ function fieldInfo(id){for(var i=0;i<SYS.length;i++){var s=SYS[i],k=s[0];
   return null}
 function shown(v,info){if(v==='')return '';return info.kind==='L'&&v.indexOf('.')<0?fmtN(+v):v}
 function setField(id,raw){var el=document.getElementById(id),info=fieldInfo(id);if(!el||!info)return;el.value=shown(raw,info);el.classList.remove('bad');fire(el);paintCols();bigShow();kWarn()}
-function kWarn(){var w=document.getElementById('k-warn');if(!w||!KS.info)return;var v=val(KS.id),on=KS.info.high!=null&&v!==''&&+v>KS.info.high;w.hidden=!on;if(on)w.textContent='🌡️ เกิน '+KS.info.high+' °C · ส่งแล้วระบบจะแจ้งกลุ่ม LINE ทันที'}
+function kWarn(){var w=document.getElementById('k-warn');if(!w||!KS.info)return;var v=val(KS.id),on=KS.info.high!=null&&v!==''&&+v>KS.info.high;w.hidden=!on;if(on)w.innerHTML=SVI(IC2.temp)+'<span>เกิน '+KS.info.high+' °C · ส่งแล้วระบบจะแจ้งกลุ่ม LINE ทันที</span>'}
 function bigShow(){var b=document.getElementById('k-big');if(!b||!KS.id)return;var v=val(KS.id),info=KS.info;
   var txt=v===''?'<span class="ph0">—</span>':shown(v,info);if(b.dataset.t!==txt){var old=b.dataset.t||'';b.dataset.t=txt;
     if(v===''||reduced())b.innerHTML=txt+'<small>'+info.unit+'</small>';else{var h='';for(var i=0;i<txt.length;i++)h+='<span class="'+(old.charAt(i)!==txt.charAt(i)?'roll':'')+'">'+txt.charAt(i)+'</span>';b.innerHTML='<span class="odo">'+h+'</span><small>'+info.unit+'</small>'}}}
@@ -662,13 +674,13 @@ function rulerTo(v,smooth){if(!R.cfg)return;var i=Math.max(0,Math.min(R.cfg.n,Ma
 function sheetHTML(){return '<div class="scrim" id="scrim"></div><div class="sheet" id="sheet" data-m="slide" aria-hidden="true"><div class="grab"></div>'+
   '<div class="kh"><span class="nm" id="k-nm"></span><span class="lb" id="k-lb"></span><span class="steps" id="steps"></span></div>'+
   '<div class="disp"><div class="prev"><span id="k-pl">ครั้งก่อน</span><b id="k-prev">—</b></div><div class="big" id="k-big"></div></div>'+
-  '<div class="kwarn" id="k-warn" hidden></div><div class="kmode" id="kmode"><button type="button" data-m="slide">⇆ เลื่อน · Slide</button><button type="button" data-m="type">⌨ พิมพ์ · Type</button></div>'+
+  '<div class="kwarn" id="k-warn" hidden></div><div class="kmode" id="kmode"><button type="button" data-m="slide">'+SVI(IC2.slide)+' เลื่อน · Slide</button><button type="button" data-m="type">'+SVI(IC2.keys)+' พิมพ์ · Type</button></div>'+
   '<div class="rulerw"><button type="button" class="kbtn" data-n="-1">−<small id="st-a">25</small></button><div class="ruler"><div class="rtrack" id="rtrack"><div class="rin" id="rin"></div></div><div class="needle2"></div></div><button type="button" class="kbtn" data-n="1">+<small id="st-b">25</small></button></div>'+
   '<div class="hint2" id="hint2"></div>'+
-  '<div class="slidenx"><button type="button" class="kbtn" id="k-same" data-ok="same">ค่าเดิม ✓<small>Same as before</small></button><button type="button" class="nx" data-k="n">ถัดไป ›<small>Next</small></button></div>'+
+  '<div class="slidenx"><button type="button" class="kbtn" id="k-same" data-ok="same">'+SVI(IC2.check)+' ค่าเดิม<small>Same as before</small></button><button type="button" class="nx" data-k="n">ถัดไป '+SVI(IC2.next,18)+'<small>Next</small></button></div>'+
   '<div class="quick" id="quick"></div><div class="keys" id="keys">'+['1','2','3'].map(function(x){return '<button type="button" class="kbtn" data-k="'+x+'">'+x+'</button>'}).join('')+'<button type="button" class="kbtn cl" data-k="c">ล้าง</button>'+
-  ['4','5','6'].map(function(x){return '<button type="button" class="kbtn" data-k="'+x+'">'+x+'</button>'}).join('')+'<button type="button" class="nx" data-k="n">ถัดไป ›<small>Next</small></button>'+
-  ['7','8','9','.','0'].map(function(x){return '<button type="button" class="kbtn" data-k="'+x+'">'+x+'</button>'}).join('')+'<button type="button" class="kbtn bk" data-k="b" aria-label="ลบ">⌫</button></div></div>'}
+  ['4','5','6'].map(function(x){return '<button type="button" class="kbtn" data-k="'+x+'">'+x+'</button>'}).join('')+'<button type="button" class="nx" data-k="n">ถัดไป '+SVI(IC2.next,18)+'<small>Next</small></button>'+
+  ['7','8','9','.','0'].map(function(x){return '<button type="button" class="kbtn" data-k="'+x+'">'+x+'</button>'}).join('')+'<button type="button" class="kbtn bk" data-k="b" aria-label="ลบ">'+SVI(IC2.back,24)+'</button></div></div>'}
 function sheetSetup(){if(document.getElementById('sheet'))return;document.body.insertAdjacentHTML('beforeend',sheetHTML());
   document.getElementById('scrim').onclick=kClose;
   document.getElementById('sheet').addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('button');if(!t||!KS.id)return;
