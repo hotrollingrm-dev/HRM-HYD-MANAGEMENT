@@ -325,9 +325,14 @@ function phoneLast(code) {
     if (ts != null && a !== '') put(v[HEAD_EV.indexOf('system')], Number(a), ts);
   });
   Object.keys(temps).forEach(k => { if (last[k]) { last[k].temp = temps[k].temp; last[k].tempTs = temps[k].ts; } else last[k] = { temp: temps[k].temp, tempTs: temps[k].ts }; });
-  return { ok: true, last: last, rates: sysRates_(c), scale: scale, tempHigh: tempHigh_(c) };
+  return { ok: true, last: last, rates: sysRates_(c), scale: scale, tempHigh: tempHigh_(c), tempHighs: tempHighs_(c), swing: sysSwing_(c) };
 }
 function tempHigh_(c) { const v = Number(c.TEMP_HIGH); return isFinite(v) && v > 0 ? v : 55; }
+function tempHighs_(c) { const o = {}, d = tempHigh_(c); SYS.forEach(x => o[x[0]] = d);
+  String(c.TEMP_HIGHS || '').split(/[\s,;]+/).forEach(x => { const m = /^(servo|auxiliary|lubrication):(\d+(\.\d+)?)$/.exec(x); if (m && Number(m[2]) > 0) o[m[1]] = Number(m[2]); }); return o; }
+/* level swing while rolling (L): a drop up to max is normal use, not an abnormal drop */
+function sysSwing_(c) { const o = { servo: { min: 100, max: 150 }, auxiliary: { min: 100, max: 150 }, lubrication: { min: 100, max: 150 } };
+  String(c.SYS_SWING || '').split(/[\s,;]+/).forEach(x => { const m = /^(servo|auxiliary|lubrication):(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/.exec(x); if (m) o[m[1]] = { min: Number(m[2]), max: Number(m[3]) }; }); return o; }
 function phoneBoot(code) {
   const c = cfg_(), ok = !!code && String(code).trim() === c.TEAM_CODE;
   return { ok: true, codeOk: ok, dayStart: c.DAY_START || '08:00', dayEnd: c.DAY_END || '20:00', machine: c.MACHINE || 'HRM Process',
@@ -415,6 +420,8 @@ function api_(p) {
     if (p.rota != null && /^(\d{4}-\d{2}-\d{2}\|[ABC-]{2}(,[ABC-]{2}){0,59})?$/.test(String(p.rota))) setCfg_('ROTA', String(p.rota), 'ตารางหมุนกะ: วันเริ่มรอบ|เช้าดึก,… (ส่งมาจากโปรแกรมบนคอม)');
     if (p.rotaCal != null && /^(\d{4}-\d{2}-\d{2}\|[ABC-]{2}(,[ABC-]{2}){0,1499})?$/.test(String(p.rotaCal))) setCfg_('ROTA_CAL', String(p.rotaCal), 'ปฏิทินกะรายวัน: วันแรก|เช้าดึก,… (ส่งมาจากโปรแกรมบนคอม)');
     if (p.rates != null && /^((servo|auxiliary|lubrication):\d+(\.\d+)?,?){0,3}$/.test(String(p.rates))) setCfg_('SYS_RATES', String(p.rates), 'เกณฑ์ลดผิดปกติ L/ชม. (ส่งมาจากโปรแกรมบนคอม)');
+    if (p.swing != null && /^((servo|auxiliary|lubrication):\d+(\.\d+)?-\d+(\.\d+)?,?){0,3}$/.test(String(p.swing))) setCfg_('SYS_SWING', String(p.swing), 'สวิงระหว่างรีด L (ส่งมาจากโปรแกรมบนคอม)');
+    if (p.temps != null && /^((servo|auxiliary|lubrication):\d+(\.\d+)?,?){0,3}$/.test(String(p.temps))) setCfg_('TEMP_HIGHS', String(p.temps), 'เกณฑ์อุณหภูมิสูง °C (ส่งมาจากโปรแกรมบนคอม)');
     if (p.link != null && /^(https:\/\/[^\s"'<>]{8,300})?$/.test(String(p.link))) setCfg_('PHONE_LINK', String(p.link), 'ลิงก์หน้ามือถือ (แนบในข้อความแจ้งเตือน LINE)');
     return { ok: true, names: list };
   }
@@ -461,14 +468,15 @@ function linePush_(text, flex) {
 }
 /* oil too hot (default above 55 °C, Config TEMP_HIGH): tell the LINE group straight away; never blocks saving */
 function tempAlert_(r, c) {
-  const lim = tempHigh_(c), hot = SYS.filter(x => r[x[2]] !== '' && r[x[2]] != null && isFinite(Number(r[x[2]])) && Number(r[x[2]]) > lim)
-    .map(x => ({ id: x[0], t: Number(r[x[2]]) }));
+  const hs = tempHighs_(c), hot = SYS.filter(x => r[x[2]] !== '' && r[x[2]] != null && isFinite(Number(r[x[2]])) && Number(r[x[2]]) > hs[x[0]])
+    .map(x => ({ id: x[0], t: Number(r[x[2]]), lim: hs[x[0]] }));
+  const lim = Math.min.apply(null, hot.length ? hot.map(h => h.lim) : [tempHigh_(c)]);
   if (!hot.length || String(c.TEMP_ALERT || '1') === '0') return null;
   const L = lineProps_(); if (!L.token || !L.group) return { list: hot, line: false };
   const th = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'], d = String(r.shiftDate).split('-');
   const when = (r.shift === 'night' ? 'กะดึก ' : 'กะเช้า ') + (+d[2]) + ' ' + th[+d[1] - 1] + ' ' + r.time;
   const who = String(r.recorder || '').toUpperCase() + (r.team ? ' (ทีม ' + r.team + ')' : '');
-  const text = '🌡️ อุณหภูมิน้ำมันสูง เกิน ' + lim + ' °C\n' + hot.map(h => '• ' + SYS_FULL[h.id] + '  ' + h.t.toFixed(1) + ' °C').join('\n') + '\n' + when + ' · ' + who;
+  const text = '🌡️ อุณหภูมิน้ำมันสูง เกิน ' + lim + ' °C\n' + hot.map(h => '• ' + SYS_FULL[h.id] + '  ' + h.t.toFixed(1) + ' °C (เกณฑ์ ' + h.lim + ')').join('\n') + '\n' + when + ' · ' + who;
   const row = h => ({ type: 'box', layout: 'horizontal', contents: [{ type: 'text', text: SYS_FULL[h.id], size: 'md', color: '#333333', flex: 3 },
     { type: 'text', text: h.t.toFixed(1) + ' °C', size: 'lg', weight: 'bold', color: '#D9363C', align: 'end', flex: 2 }] });
   const flex = { type: 'flex', altText: text.slice(0, 380), contents: { type: 'bubble', size: 'kilo',
@@ -704,7 +712,7 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.9.2';
+const SERVER_VER = 'v1.9.3';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   const p = PropertiesService.getScriptProperties();

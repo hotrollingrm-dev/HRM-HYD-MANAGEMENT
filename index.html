@@ -159,6 +159,18 @@ textarea{width:100%;min-height:84px;border:1px solid var(--well-line);border-rad
 .names button[aria-pressed="true"] i{border-color:var(--pri);background:var(--pri)}.names button[aria-pressed="true"] i:after{content:'';width:7px;height:7px;border-radius:50%;background:#04131A}
 .names.bad{outline:2px solid var(--bad);outline-offset:4px;animation:shake 220ms cubic-bezier(.36,.07,.19,.97)}
 .names .nn{grid-column:1/-1;font-size:13.5px;color:var(--fg3);padding:8px 2px}
+.c-viz .viz{display:grid;grid-template-columns:150px 1fr;gap:12px;align-items:center}
+.vtank svg{display:block;width:100%;height:auto}.vempty{height:160px;display:grid;place-items:center;color:var(--fg3);font-size:13px;text-align:center}
+.drums{display:flex;flex-wrap:wrap;gap:6px;min-height:52px}.dw{display:inline-block;width:38px;animation:dpop 320ms var(--ease-enter) both;transform-origin:50% 90%}
+.dw .drum{width:38px;height:auto;display:block}
+@keyframes dpop{from{opacity:0;transform:scale(.6) translateY(8px)}}
+.dw.tilt{animation:dtip 700ms var(--ease-move) both}
+@keyframes dtip{0%{transform:none}40%{transform:rotate(-38deg) translate(-4px,-4px)}70%{transform:rotate(-38deg) translate(-4px,-4px);opacity:1}100%{transform:none;opacity:.35}}
+.dmore{align-self:center;font-family:Chakra,Plex,sans-serif;font-weight:700;color:var(--fg2)}
+.vnum{margin-top:10px;padding:8px 10px;border-radius:12px;background:var(--well);border:1px solid var(--well-line);box-shadow:inset 0 2px 6px rgba(0,0,0,.5)}
+.vnum .vk{display:block;font-size:11.5px;color:var(--fg3)}.vnum b{display:block;font-size:28px;line-height:1.15;color:#fff}.vnum .vd{display:block;font-size:12.5px;color:var(--run);font-family:Chakra,Plex,sans-serif;font-weight:600}
+.pour{stroke-dasharray:10 7;opacity:0;transition:opacity 250ms}.pour.on{opacity:1;animation:pour 420ms linear infinite}
+@keyframes pour{to{stroke-dashoffset:-17}}
 /* ---------- 3 hydraulic columns ---------- */
 .tanks3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
 .col{position:relative;border-radius:12px;padding:8px 5px 7px;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(0,0,0,.12));border:1px solid rgba(255,255,255,.05);transition:box-shadow 250ms var(--ease-enter),border-color 250ms}
@@ -285,19 +297,20 @@ window.onerror=function(m,src,line,col,err){reportErr('js:'+line+':'+col,err||m)
 window.addEventListener&&window.addEventListener('unhandledrejection',function(e){reportErr('promise',e&&e.reason)});
 var BOOT={machine:'HRM Process',dayStart:'08:00',dayEnd:'20:00',recorders:[],members:[]};var CONF=window.HRM_CONFIG||{};
 /* abnormal level drop: compare with the last level of each system (from the server, kept on the phone for offline use) */
-var DROP_REASONS=[['slow_return','น้ำมันไหลกลับแทงก์ช้า'],['mt_drain','มี Drain จาก Maintenance'],['leak','น้ำมันรั่ว'],['parts','เปลี่ยน/ซ่อมอุปกรณ์'],['other','ระบุเอง']];
+var DROP_REASONS=[['narrow','รีดงานหน้าแคบ มีการใช้น้ำมันเยอะ'],['liner','รีดงาน Liner (มีการตัด+Edger) มีการใช้น้ำมันเยอะ'],['slow_return','น้ำมันไหลกลับแทงก์ช้า'],['mt_drain','มี Drain จาก Maintenance'],['leak','น้ำมันรั่ว'],['parts','เปลี่ยน/ซ่อมอุปกรณ์'],['other','ระบุเอง']];
 var LAST={last:{},rates:{servo:5,auxiliary:4,lubrication:4}};try{var _l=JSON.parse(localStorage.getItem('hrmMob_last')||'null');if(_l&&_l.last)LAST=_l}catch(_){}
 function saveLast(){try{localStorage.setItem('hrmMob_last',JSON.stringify(LAST))}catch(_){}}
-function loadLast(){if(typeof call!=='function')return;call('phoneLast',[getCode()]).then(function(r){if(r&&r.ok){LAST={last:r.last||{},rates:r.rates||LAST.rates,scale:r.scale||{},tempHigh:r.tempHigh};saveLast();dropUI()}},function(){})}
+function loadLast(){if(typeof call!=='function')return;call('phoneLast',[getCode()]).then(function(r){if(r&&r.ok){LAST={last:r.last||{},rates:r.rates||LAST.rates,scale:r.scale||{},tempHigh:r.tempHigh,tempHighs:r.tempHighs||{},swing:r.swing||{}};saveLast();dropUI()}},function(){})}
 function readTs(date,time,shift){var d=/^(\d{4})-(\d{2})-(\d{2})$/.exec(date||''),t=/^(\d{1,2}):(\d{2})$/.exec(time||'');if(!d||!t)return null;var ms=Date.UTC(+d[1],+d[2]-1,+d[3],+t[1],+t[2])-7*3600000;
   if(shift==='night'&&(+t[1]*60+ +t[2])<hm(BOOT.dayStart))ms+=86400000;return ms}
 function drops(){var ts=readTs(document.getElementById('f-date')?document.getElementById('f-date').value:'',val('f-time'),st.shift),out=[];if(ts==null)return out;
   SYS.forEach(function(s){var v=val('f-'+s[2]),p=LAST.last[s[0]];if(v===''||isNaN(+v)||!p)return;var hrs=(ts-p.ts)/3600000;if(hrs<0.25||hrs>26)return;var d=p.level-(+v),rate=d/hrs,lim=+LAST.rates[s[0]]||5;
-    if(rate>lim)out.push({id:s[0],name:s[1],drop:Math.round(d),hrs:Math.round(hrs*10)/10,rate:Math.round(rate*10)/10,from:p.level})});return out}
+    var sw=LAST.swing&&LAST.swing[s[0]]&&isFinite(+LAST.swing[s[0]].max)?+LAST.swing[s[0]].max:150;
+    if(rate>lim&&d>sw)out.push({id:s[0],name:s[1],drop:Math.round(d),hrs:Math.round(hrs*10)/10,rate:Math.round(rate*10)/10,from:p.level})});return out}
 function dropUI(clicked){try{paintCols()}catch(_){}var c=document.getElementById('drop-card');if(!c)return;var l=st.mode==='act'?[]:drops();c.hidden=!l.length;if(!l.length){return}
   document.getElementById('drop-list').innerHTML=l.map(function(x){return '<div class="drop-it"><b>'+esc(x.name)+'</b><span>'+x.from+' → '+(x.from-x.drop)+' L · ลด '+x.drop+' L ใน '+x.hrs+' ชม. ('+x.rate+' L/ชม.)</span></div>'}).join('');
   var tx=document.getElementById('f-droptext');tx.hidden=st.drop!=='other';if(clicked&&st.drop==='other')tx.focus()}
-var PAGE_VER='v1.9.2';
+var PAGE_VER='v1.9.3';
 /* the team comes from the recorder's name (Settings → Members & teams on the PC) */
 function teamOf(n){var k=String(n||'').toUpperCase(),l=BOOT.members||[];for(var i=0;i<l.length;i++)if(l[i].name===k)return l[i].team||'';return ''}
 function teamShow(){var t=teamOf(document.getElementById('f-rec')?document.getElementById('f-rec').value:''),el=document.getElementById('team-badge');st.team=t;if(el){el.textContent=t?'ทีม '+t+' · Team '+t:'ทีมจะขึ้นเองตามชื่อ';el.className='team-badge'+(t?' on':'')}}
@@ -370,7 +383,7 @@ function form(){var ns=nowShift();st.shift=ns.shift;st.date=ns.date;var d=new Da
   '<div class="card"><span class="lbl">ระบบ<span>System</span></span><div class="seg sys3" id="seg-rsys">'+SYS.map(function(s){return '<button data-v="'+s[0]+'">'+(s[0]==='servo'?'Servo':s[0]==='auxiliary'?'Auxiliary':'Lubrication')+'</button>'}).join('')+'</div><div class="oilname" id="oilname">เลือกระบบก่อน · Select a system</div></div>'+
   '<div class="card c-tanks"><span class="lbl" id="lb-tanks">จำนวนถังที่เติม<span>Tanks</span></span><div class="stepper"><button type="button" onclick="stepT(-1)" aria-label="ลด">−</button><input id="f-tanks" inputmode="numeric" value="1" aria-label="จำนวนถัง"><button type="button" onclick="stepT(1)" aria-label="เพิ่ม">+</button></div><span class="tankunit">ถัง · tanks</span></div>'+
   '<div class="card c-drained"><label class="lbl" for="f-drained">น้ำมันเก่าที่ถ่ายออก<span>Old oil drained</span></label><div class="unit"><input id="f-drained" inputmode="decimal" autocomplete="off"><i>L</i></div></div>'+
-  '<div class="card c-ba"><div class="row"><div><label class="lbl" for="f-before" id="lb-before">ก่อนเติม<span>Before</span></label><div class="unit"><input id="f-before" inputmode="decimal" autocomplete="off"><i>L</i></div></div><div><label class="lbl" for="f-after" id="lb-after">หลังเติม<span>After</span></label><div class="unit"><input id="f-after" inputmode="decimal" autocomplete="off"><i>L</i></div></div></div><div class="calc" id="leakamt" hidden></div></div>'+
+  vizCard()+'<div class="card c-ba"><div class="row"><div><label class="lbl" for="f-before" id="lb-before">ก่อนเติม<span>Before</span></label><div class="unit"><input id="f-before" inputmode="decimal" autocomplete="off"><i>L</i></div></div><div><label class="lbl" for="f-after" id="lb-after">หลังเติม<span>After</span></label><div class="unit"><input id="f-after" inputmode="decimal" autocomplete="off"><i>L</i></div></div></div><div class="calc" id="leakamt" hidden></div></div>'+
   '<div class="card c-leak"><label class="lbl" for="f-loc">จุดที่รั่ว<span>Location</span></label><input id="f-loc" maxlength="120" autocomplete="off" placeholder="เช่น ข้อต่อท่อ Pump No.2">'+
   '<label class="lbl" for="f-cause" style="margin-top:10px">สาเหตุ (ถ้าทราบ)<span>Cause</span></label><input id="f-cause" maxlength="200" autocomplete="off">'+
   '<label class="lbl" for="f-laction" style="margin-top:10px">การแก้ไขเบื้องต้น<span>Action taken</span></label><textarea id="f-laction" maxlength="200" placeholder="เช่น ขันข้อต่อ, เช็ดทำความสะอาด, แจ้ง MT" style="margin-top:0"></textarea></div>'+
@@ -397,7 +410,7 @@ function modeUI(changed){var ac=st.mode==='act';if(typeof kClose==='function'&&c
   var A=actOf(),t=st.act;document.getElementById('ttl').textContent=ac?actTitle(A):'บันทึกระดับน้ำมัน';
   var b=document.getElementById('send');if(b){b.className='btn'+(ac?' act':'');b.style.setProperty('--ac',ac?A[3]:'');b.innerHTML=sendLabel();if(!ac&&typeof paintCols==='function')paintCols()}
   var show=function(cls,on){[].forEach.call(document.querySelectorAll(cls),function(x){x.hidden=!on})};
-  show('.c-tanks',t==='refill'||t==='oil_change');show('.c-drained',t==='oil_change');show('.c-ba',t!=='maint');show('.c-leak',t==='leak');show('.c-maint',t==='maint');show('.c-reason',t==='refill'||t==='oil_change');
+  show('.c-tanks',t==='refill'||t==='oil_change');show('.c-drained',t==='oil_change');show('.c-ba',t!=='maint');show('.c-viz',t==='refill'||t==='oil_change');try{vizRender()}catch(_){}show('.c-leak',t==='leak');show('.c-maint',t==='maint');show('.c-reason',t==='refill'||t==='oil_change');
   document.getElementById('lb-tanks').innerHTML=t==='oil_change'?'จำนวนถังน้ำมันใหม่<span>New oil tanks</span>':'จำนวนถังที่เติม<span>Tanks</span>';
   document.getElementById('lb-before').innerHTML=t==='leak'?'ก่อนพบรั่ว<span>Before</span>':t==='oil_change'?'ก่อนเปลี่ยน<span>Before</span>':'ก่อนเติม<span>Before</span>';
   document.getElementById('lb-after').innerHTML=t==='leak'?'ปัจจุบัน<span>Now</span>':t==='oil_change'?'หลังเปลี่ยน<span>After</span>':'หลังเติม<span>After</span>';
@@ -409,7 +422,7 @@ function modeUI(changed){var ac=st.mode==='act';if(typeof kClose==='function'&&c
 function leakCalc(){var el=document.getElementById('leakamt');if(!el)return;var B=+val('f-before'),A=+val('f-after');var on=st.act==='leak'&&val('f-before')!==''&&val('f-after')!==''&&B>A;el.hidden=!on;if(on)el.innerHTML='น้ำมันหายไปประมาณ <b>'+(Math.round((B-A)*10)/10)+' L</b>'}
 function sendLabel(){return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 20 4l-5 16-3.2-6.4z"/><path d="m11.8 13.6 3.6-4"/></svg>'+(st.mode==='act'?actBtn(actOf()):'ส่งข้อมูล · Send'+
   '<svg class="ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="4"/><circle id="ring" cx="22" cy="22" r="18" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" transform="rotate(-90 22 22)" stroke-dasharray="113.1" stroke-dashoffset="113.1" style="transition:stroke-dashoffset 400ms var(--ease-enter)"/><text id="ring-t" x="22" y="27" text-anchor="middle" font-family="Chakra,sans-serif" font-weight="700" font-size="13" fill="#fff">0</text></svg>')}
-function stepT(d){var i=document.getElementById('f-tanks');var v=Math.max(1,Math.min(50,(parseInt(i.value,10)||0)+d));i.value=v;st.tanks=v;i.classList.remove('bad')}
+function stepT(d){var i=document.getElementById('f-tanks');var v=Math.max(1,Math.min(50,(parseInt(i.value,10)||0)+d));i.value=v;st.tanks=v;i.classList.remove('bad');vizRender()}
 /* recorder: pick the team (A/B/C), then tap the name. Starts on the team working this shift */
 var RT={team:''};
 function teamsList(){var m=BOOT.members||[],x=['A','B','C'];if(m.some(function(o){return !o.team}))x.push('-');return x}
@@ -466,7 +479,7 @@ function send(){showErr('');[].forEach.call(document.querySelectorAll('.bad'),fu
   flush(true).then(function(okN){b.disabled=false;b.innerHTML=sendLabel();paintCols();var sum=SYS.filter(function(s){return r[s[2]]!==''}).map(function(s){return s[0]==='servo'?'Servo '+r.servoL:(s[0]==='auxiliary'?'Aux '+r.auxL:'Lube '+r.lubL)}).join(' · ');
     if(queue().some(function(x){return x.id===r.id}))pop('เก็บไว้ในเครื่องแล้ว','ยังส่งไม่ได้ (ไม่มีสัญญาณ) ระบบจะส่งให้อัตโนมัติเมื่อมีเน็ต<br>'+esc(thDate(r.shiftDate))+' '+(r.shift==='day'?'กะเช้า':'กะดึก')+' '+r.time);
     else pop('ส่งข้อมูลเรียบร้อย',esc(thDate(r.shiftDate))+' · '+(r.shift==='day'?'กะเช้า':'กะดึก')+' '+r.time+' · Team '+r.team+'<br>'+esc(sum)+' L'+hotNote(r))})}
-function hotNote(r){var h=SYS.filter(function(s){return r[s[3]]!==''&&+r[s[3]]>tHigh()});return h.length?'<br><b style="color:#FF8A8D">🌡️ อุณหภูมิสูงเกิน '+tHigh()+' °C: '+h.map(function(s){return SYSC[s[0]][0]+' '+r[s[3]]+' °C'}).join(', ')+'</b><br>ระบบแจ้งกลุ่ม LINE ให้แล้ว':''}
+function hotNote(r){var h=SYS.filter(function(s){return r[s[3]]!==''&&+r[s[3]]>tHigh(s[0])});return h.length?'<br><b style="color:#FF8A8D">🌡️ อุณหภูมิสูงเกินเกณฑ์: '+h.map(function(s){return SYSC[s[0]][0]+' '+r[s[3]]+' °C (เกณฑ์ '+tHigh(s[0])+')'}).join(', ')+'</b><br>ระบบแจ้งกลุ่ม LINE ให้แล้ว':''}
 function checkTime(time){var m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);if(!m)return 'bad_time';var mins=+m[1]*60+ +m[2],ds=hm(BOOT.dayStart),de=hm(BOOT.dayEnd);
   if(st.shift==='day'?!(mins>=ds&&mins<de):!(mins>=de||mins<ds))return 'time_shift';return ''}
 function sendAct(){var rec=val('f-rec').toUpperCase(),time=val('f-time'),date=document.getElementById('f-date').value,t=st.act,A=actOf();
@@ -540,7 +553,7 @@ setInterval(function(){if(queue().length)flush(false)},30000);
 var SCALE={servo:{lo:4500,hi:6500,low:5000},auxiliary:{lo:4500,hi:5750,low:4500},lubrication:{lo:3500,hi:5750,low:3500}};
 var SYSC={servo:['SERVO','#5B9BFF'],auxiliary:['AUX','#2FD3C0'],lubrication:['LUB','#FFB547']};
 function scaleOf(k){var s=LAST.scale&&LAST.scale[k];return s&&isFinite(s.lo)&&isFinite(s.hi)&&s.hi>s.lo?s:SCALE[k]}
-function tHigh(){var v=+(LAST.tempHigh||BOOT.tempHigh);return isFinite(v)&&v>0?v:55}
+function tHigh(k){var v=+((k&&LAST.tempHighs&&LAST.tempHighs[k])||LAST.tempHigh||BOOT.tempHigh);return isFinite(v)&&v>0?v:55}
 var TP={};try{TP=JSON.parse(LS.get('tprev')||'{}')||{}}catch(_){TP={}}
 var reduced=function(){return !!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)};
 var fmtN=function(n){n=Math.round(+n);var s=String(Math.abs(n)),o='';while(s.length>3){o=','+s.slice(-3)+o;s=s.slice(0,-3)}return (n<0?'-':'')+s+o};
@@ -590,7 +603,7 @@ function paintCols(){if(!document.getElementById('col-servo'))return;var dl=st.m
     document.getElementById('pv-'+k).textContent='ก่อน '+(pl!=null?fmtN(pl):'—');
     var c=document.getElementById('d-'+k),lv=L!==''&&!isNaN(+L)?+L:null;
     if(lv!=null&&pl!=null&&String(Math.round(lv)).length>=String(Math.round(pl)).length){var d=Math.round(lv-pl);c.hidden=false;c.textContent=(d>0?'+':d<0?'−':'±')+fmtN(Math.abs(d));c.className='dchip'+(dk[k]?' bad':d>0?' up':'')}else c.hidden=true;
-    var tv=T!==''&&!isNaN(+T)?+T:null,tf=ti.closest('.fld'),hot=tv!=null&&tv>tHigh();tf.classList.toggle('hot',hot);tf.querySelector('.k span').textContent=hot?'สูงเกิน '+tHigh()+'°':'อุณหภูมิ';
+    var tv=T!==''&&!isNaN(+T)?+T:null,tf=ti.closest('.fld'),hot=tv!=null&&tv>tHigh(k);tf.classList.toggle('hot',hot);tf.querySelector('.k span').textContent=hot?'สูงเกิน '+tHigh(k)+'°':'อุณหภูมิ';
     setLevel(k,lv!=null&&String(Math.round(lv)).length>=String(Math.round(pl||lv)).length?lv:pl);setTemp(k,T!==''&&!isNaN(+T)?+T:pt);
     var col=document.getElementById('col-'+k);col.classList.toggle('abn',!!dk[k]);if(dk[k]&&!_flash[k]){col.classList.remove('flash');void col.offsetWidth;col.classList.add('flash')}_flash[k]=!!dk[k]});
   var ring=document.getElementById('ring');if(ring){ring.style.strokeDashoffset=113.1*(1-n/6);document.getElementById('ring-t').textContent=n;var b=document.getElementById('send');if(b)b.classList.toggle('ready',n===6)}}
@@ -599,7 +612,7 @@ var KS={id:null,raw:'',info:null},TW=14,R={cfg:null,lock:0,last:-1};
 var READ_ORDER=[];SYS.forEach(function(s){READ_ORDER.push('f-'+s[2])});SYS.forEach(function(s){READ_ORDER.push('f-'+s[3])});
 function fieldInfo(id){for(var i=0;i<SYS.length;i++){var s=SYS[i],k=s[0];
     if(id==='f-'+s[2])return {k:k,kind:'L',name:SYSC[k][0],label:'ระดับน้ำมัน (L)',unit:'L',prev:prevL(k),step:25,lo:scaleOf(k).lo-500,hi:scaleOf(k).hi+500,low:scaleOf(k).low,grp:READ_ORDER};
-    if(id==='f-'+s[3])return {k:k,kind:'T',name:SYSC[k][0],label:'อุณหภูมิ (°C)',unit:'°C',prev:prevT(k),step:0.5,lo:20,hi:90,low:null,high:tHigh(),grp:READ_ORDER}}
+    if(id==='f-'+s[3])return {k:k,kind:'T',name:SYSC[k][0],label:'อุณหภูมิ (°C)',unit:'°C',prev:prevT(k),step:0.5,lo:20,hi:90,low:null,high:tHigh(k),grp:READ_ORDER}}
   var k2=st.rsys||'servo',S=scaleOf(k2),grp=['f-before','f-after'];var dr=document.getElementById('f-drained');if(dr&&!dr.closest('.card').hidden)grp=['f-drained','f-before','f-after'];
   var B=val('f-before');
   if(id==='f-before')return {k:k2,kind:'L',name:SYSC[k2][0],label:document.getElementById('lb-before').firstChild.textContent+' (L)',unit:'L',prev:prevL(k2),step:25,lo:S.lo-1500,hi:S.hi+500,low:S.low,grp:grp};
@@ -675,6 +688,35 @@ document.addEventListener('focusin',function(e){var t=e.target;if(t&&t.classList
 function bootFx(){var first=true;try{first=!sessionStorage.getItem('hrmBoot');sessionStorage.setItem('hrmBoot','1')}catch(_){}
   if(!first||reduced()){paintCols();return}document.body.classList.add('boot');SYS.forEach(function(s){setLevel(s[0],null);setTemp(s[0],null)});
   requestAnimationFrame(function(){requestAnimationFrame(function(){document.body.classList.remove('boot');document.body.classList.add('booting');setTimeout(paintCols,350);setTimeout(function(){document.body.classList.remove('booting')},1300)})})}
+
+/* ===== refill picture: the tank fills from before to after, one drum per tank added ===== */
+var DRUM_L=200,VZ={key:'',anim:0};
+function vizCard(){return '<div class="card c-viz" hidden><div class="ph"><h2>ภาพการเติม</h2><small>Refill view</small><span class="dots"><i></i><i></i><i></i></span></div>'+
+  '<div class="viz"><div class="vtank" id="vtank"></div><div class="vside"><div class="drums" id="drums"></div><div class="vnum"><span class="vk" id="viz-k">ก่อนเติม</span><b class="num" id="viz-n">—</b><span class="vd" id="viz-d"></span></div></div></div></div>'}
+function drumSVG(c){return '<svg viewBox="0 0 40 50" class="drum"><ellipse cx="20" cy="46" rx="15" ry="2.6" fill="#000" opacity=".4"/><path d="M6 8c0-3 28-3 28 0v34c0 3-28 3-28 0z" fill="'+c+'" stroke="#0E1115" stroke-width="1.6"/>'+
+  '<path d="M6 18c6 2 22 2 28 0M6 32c6 2 22 2 28 0" stroke="#0E1115" stroke-width="1.3" fill="none" opacity=".55"/><path d="M10 11v28" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".35"/><ellipse cx="20" cy="8" rx="14" ry="2.6" fill="#2B3038" stroke="#0E1115" stroke-width="1.2"/><circle cx="27" cy="8" r="1.6" fill="#8A95A3"/>'+
+  '<text x="20" y="28" text-anchor="middle" font-family="Chakra,sans-serif" font-weight="700" font-size="8" fill="#0E1115">200L</text></svg>'}
+function vizLevel(k,v,ms){var g=document.getElementById('lv-viz');if(!g)return;var S=scaleOf(k),lw=document.getElementById('low-viz');if(lw)lw.setAttribute('transform','translate(0 '+(124-74*((S.low-S.lo)/(S.hi-S.lo)))+')');var f=v==null?0:Math.max(0,Math.min(1,(v-S.lo)/(S.hi-S.lo)));g.style.transition=ms?'transform '+ms+'ms cubic-bezier(.19,1,.22,1)':'none';g.style.transform='translateY('+(74-74*f)+'px)'}
+function vizGhost(k,v){var gh=document.getElementById('gh-viz');if(!gh)return;if(v==null){gh.setAttribute('opacity','0');return}var S=scaleOf(k),f=Math.max(0,Math.min(1,(v-S.lo)/(S.hi-S.lo)));gh.setAttribute('transform','translate(0 '+(124-74*f)+')');gh.setAttribute('opacity','.9')}
+function vizNum(from,to,ms){var el=document.getElementById('viz-n');if(!el)return;cancelAnimationFrame(VZ.anim);if(from==null||reduced()||!ms){el.textContent=to==null?'—':fmtN(to)+' L';return}var t0=performance.now();
+  var step=function(t){var p=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-p,3);el.textContent=fmtN(from+(to-from)*e)+' L';if(p<1)VZ.anim=requestAnimationFrame(step)};VZ.anim=requestAnimationFrame(step)}
+function vizRender(){var card=document.querySelector('.c-viz');if(!card||card.hidden)return;var k=st.rsys,box=document.getElementById('vtank');
+  if(!k){box.innerHTML='<div class="vempty">เลือกระบบก่อน · Select a system</div>';document.getElementById('drums').innerHTML='';document.getElementById('viz-n').textContent='—';document.getElementById('viz-d').textContent='';return}
+  if(box.dataset.k!==k){box.dataset.k=k;var svg=tankSVG(k).replace(/(g|oil|lv|low|nd)-(servo|auxiliary|lubrication)/g,'$1-viz').replace('viewBox="0 0 100 168"','viewBox="0 -44 100 212"');var c=SYSC[k][1];
+    svg=svg.replace('</svg>','<path d="M27 21h14v-6a3 3 0 0 0-3-3h-8a3 3 0 0 0-3 3z" fill="#3A414B" stroke="#0E1115" stroke-width="1.3"/>'+
+      '<path id="pour-viz" class="pour" d="M34 -40V13" stroke="'+c+'" stroke-width="4.5" stroke-linecap="round"/><path id="gh-viz" d="M33 0h34" stroke="#fff" stroke-width="1.4" stroke-dasharray="3 2" opacity="0"/></svg>');
+    box.innerHTML=svg;VZ.key=''}
+  var B=val('f-before'),A=val('f-after'),n=Math.max(1,parseInt(val('f-tanks'),10)||1),pl=prevL(k),b=B!==''?+B:pl,a=A!==''?+A:null,exp=b!=null?b+n*DRUM_L:null;
+  var dr=document.getElementById('drums');if(dr.children.length!==Math.min(n,8)||dr.dataset.k!==k){var h='';for(var i=0;i<Math.min(n,8);i++)h+='<span class="dw" style="animation-delay:'+(i*45)+'ms">'+drumSVG(SYSC[k][1])+'</span>';if(n>8)h+='<span class="dmore">+'+(n-8)+'</span>';dr.innerHTML=h;dr.dataset.k=k}
+  vizGhost(k,a==null?exp:null);
+  var key=k+'|'+b+'|'+a+'|'+n;if(key===VZ.key)return;var prevKey=VZ.key;VZ.key=key;
+  document.getElementById('viz-d').textContent=a!=null&&b!=null?(a-b>=0?'+':'−')+fmtN(Math.abs(a-b))+' L · '+(Math.round((a-b)/DRUM_L*10)/10)+' ถัง':exp!=null?'คาดว่าหลังเติม ≈ '+fmtN(exp)+' L':'';
+  if(a!=null&&b!=null&&a>b&&prevKey!==''&&!reduced()){document.getElementById('viz-k').textContent='กำลังเติม';vizLevel(k,b,0);vizNum(b,b,0);var p=document.getElementById('pour-viz');p.classList.remove('on');void p.getBoundingClientRect();p.classList.add('on');
+    [].forEach.call(dr.querySelectorAll('.dw'),function(d,i){d.classList.remove('tilt');void d.offsetWidth;d.style.animationDelay=(i*Math.min(220,1100/Math.min(n,8)))+'ms';d.classList.add('tilt')});
+    setTimeout(function(){vizLevel(k,a,1500);vizNum(b,a,1500)},250);setTimeout(function(){p.classList.remove('on');document.getElementById('viz-k').textContent='หลังเติม'},1900)}
+  else{vizLevel(k,a!=null?a:b,prevKey?500:0);vizNum(null,a!=null?a:b,0);document.getElementById('viz-k').textContent=a!=null?'หลังเติม':'ก่อนเติม'}}
+['input','change'].forEach(function(t){document.addEventListener(t,function(e){if(e.target&&/^f-(before|after|tanks)$/.test(e.target.id))vizRender()})});
+document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('#seg-rsys'))setTimeout(vizRender,0)});
 
 function start(){var code=qp('c')||LS.get('code')||'';var cb=cachedBoot();if(cb)BOOT=cb;
   if(qp('check')){checkPage();return}
