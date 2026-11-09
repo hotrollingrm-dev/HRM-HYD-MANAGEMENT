@@ -1739,6 +1739,80 @@ html.panel .toast{background:linear-gradient(180deg,#2C3139,#1F2329)!important;b
 @keyframes pscan{0%{opacity:1;transform:translateY(-150px)}100%{opacity:0;transform:translateY(100vh)}}
 html.lite .pbooting .pscan{display:none}
 @media (prefers-reduced-motion:reduce){.pbooting .card,.pbooting .header,.pbooting .sidebar,.pbooting .pscan{animation:none!important;opacity:1}}
+
+/* ================= lime theme (html.lime): sage page, cream frame, black rail, lime accent ================= */
+@font-face{font-family:Grot;font-weight:500;font-display:swap;src:url(../fonts/space-grotesk-latin-500-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+2212}
+@font-face{font-family:Grot;font-weight:700;font-display:swap;src:url(../fonts/space-grotesk-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+2212}
+:root.lime{
+  --bg:#A8AF99;--amb1:transparent;--amb2:transparent;--amb3:transparent;--amb4:transparent;
+  --glass:#FFFFFF;--glass-strong:#FFFFFF;--glass-border:#E2E5D8;--glass-hi:#FFFFFF;--glass-edge:rgba(0,0,0,.04);
+  --card:#FFFFFF;--surface:#FFFFFF;--surface-2:#F1F2EA;--line:#E2E5D8;--grid:#ECEEE5;
+  --fg:#0E0F0C;--fg-2:#4D5247;--fg-3:#868B7E;
+  --primary:#0E0F0C;--primary-soft:rgba(198,239,78,.35);--on-primary:#FFFFFF;--lime:#C6EF4E;--lime-d:#8DB21F;
+  --run:#2F8A3B;--run-soft:rgba(198,239,78,.35);--leak:#E5484D;--leak-soft:rgba(229,72,77,.1);--abn:#E07800;--abn-soft:rgba(224,120,0,.12);
+  --s-servo:#0E0F0C;--s-auxiliary:#5B7F12;--s-lubrication:#E07800;
+  --glass-card:#FFFFFF;--glass-line:#E2E5D8;
+  --font:Grot,Plex,"Thonburi","Noto Sans Thai","Leelawadee UI",system-ui,sans-serif;
+  --shadow:0 1px 0 rgba(0,0,0,.02);--scrim:rgba(30,34,24,.35);color-scheme:light}
+html.lime body{background:radial-gradient(38% 46% at 8% 30%,rgba(198,239,78,.75),transparent 70%),radial-gradient(34% 40% at 92% 92%,rgba(198,239,78,.65),transparent 70%),#A8AF99 fixed}
+html.lime .app{margin:14px;height:calc(100% - 28px);padding:12px;border-radius:30px;background:#EAECDF;box-shadow:0 30px 70px rgba(40,46,30,.25);
+  background-image:linear-gradient(rgba(0,0,0,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.035) 1px,transparent 1px);background-size:26px 26px}
+html.lime .card,html.lime .glass,html.lime .header{background:#FFFFFF!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border:1px solid #E2E5D8!important;box-shadow:none!important;border-radius:20px}
+html.lime .card::before{display:none!important}
+html.lime .header{background:transparent!important;border:0!important;border-bottom:1px solid #DADDD0!important;border-radius:0!important;min-height:70px}
+/* black rail */
+html.lime .sidebar{background:#0B0C0A!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border-radius:26px}
+html.lime .sidebar .brand .name,html.lime .sidebar .lbl .th{color:#F4F6EE}
+html.lime .sidebar .lbl .en,html.lime .sidebar .brand .tag{color:#8E9386}
+html.lime .nav-item{color:#C9CDC0}
+html.lime .nav-item:hover{background:#1C1E19}
+html.lime .nav-item.on{background:#1C1E19!important;box-shadow:none!important}
+html.lime .nav-item.on>svg{background:#C6EF4E;color:#0B0C0A;border-radius:50%;padding:6px;box-sizing:content-box;margin:-6px}
+html.lime .nav-item.on .lbl .th{color:#C6EF4E!important}
+html.lime .nav-item.on::after{background:#C6EF4E!important}
+html.lime .sidebar .sb-toggle,html.lime .sidebar .icon-btn{color:#C9CDC0}
+/* type */
+html.lime .card-title .th,html.lime .sec-t .th,html.lime .ttl .th,html.lime .lane-name,html.lime .sheet-h .th,html.lime .tl3-title .th{font-weight:700;letter-spacing:-.01em}
+html.lime .num,html.lime .clock b,html.lime .lc-oil{font-family:Grot,Plex,sans-serif;font-weight:700;letter-spacing:-.01em}
+/* pills and segments */
+html.lime .lane-cur,html.lime .sync-chip,html.lime .pill,html.lime .month-btn,html.lime .shseg,html.lime .mseg,html.lime .chip,html.lime .lane-oil,html.lime .lbl-tg{background:#F1F2EA!important;border:1px solid #E2E5D8!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html.lime .shseg button.on,html.lime .mseg button.on,html.lime .mseg button[aria-pressed="true"],html.lime .seg button[aria-pressed="true"]{background:#0E0F0C!important;color:#FFFFFF!important;box-shadow:none!important}
+html.lime .shseg button.on .th,html.lime .shseg button.on .en,html.lime .mseg button.on .th,html.lime .mseg button.on .en,html.lime .mseg button[aria-pressed="true"] .th{color:#FFFFFF!important}
+html.lime .lbl-tg.on{background:#C6EF4E!important;border-color:#C6EF4E!important}
+/* buttons: black pill, lime highlight */
+html.lime .btn-primary{background:#0E0F0C!important;color:#FFFFFF!important;box-shadow:none!important}
+html.lime .btn-primary .th,html.lime .btn-primary .en{color:#FFFFFF!important}
+html.lime .btn-primary:hover{background:#262822!important}
+html.lime .btn-glass,html.lime .btn-plain,html.lime .btn-tonal{background:#FFFFFF!important;border:1px solid #DADDD0!important;color:#0E0F0C!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html.lime .icon-btn{background:#FFFFFF!important;border:1px solid #DADDD0!important;box-shadow:none!important}
+html.lime .inp,html.lime select,html.lime textarea,html.lime .sel{background:#F1F2EA!important;border:1px solid #E2E5D8!important;box-shadow:none!important}
+html.lime .inp:focus,html.lime select:focus,html.lime textarea:focus{border-color:#0E0F0C!important;box-shadow:0 0 0 3px rgba(198,239,78,.6)!important}
+/* the cost strip becomes the lime highlight card */
+html.lime .topstrip{background:#C6EF4E!important;border-color:#B5DD3C!important}
+html.lime .topstrip .cs-kv,html.lime .topstrip .en,html.lime .topstrip .th{color:#0E0F0C}
+html.lime .topstrip .miss-chip{background:#0E0F0C;box-shadow:none;color:#fff}
+html.lime .topstrip .miss-chip .th,html.lime .topstrip .miss-chip .en,html.lime .topstrip .miss-chip .mc-go{color:#fff!important}
+/* event icons: lime-tinted tiles with black ink */
+html.lime .ic3d .tile{fill:#EEF8CF!important;stroke:#0E0F0C;stroke-width:1.2}
+html.lime .mini-tank{display:inline-block;width:18px;height:26px;flex:none;margin-right:-2px}
+html.lime .gtip{background:#0E0F0C!important;color:#fff!important;border:0;border-radius:16px}
+html.lime .gtip .en,html.lime .gtip .gt-sh-h .en{color:#B8BDAF!important}
+html.lime .toast{background:#0E0F0C!important;color:#fff}
+html.lime .sheet{background:#FFFFFF!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+html.lime .lane{border-top-color:#ECEEE5}
+html.lime .sys-dot{background:var(--s-servo)}
+/* ---------- chart entrance (every theme): lines draw in, points pop left to right, labels follow ---------- */
+.ch-in .ch-line{animation:chReveal 1s cubic-bezier(.22,1,.36,1) both}
+.ch-in .ch-line.t{animation-delay:.18s}
+.ch-in .ch-area{animation:chFade .9s ease-out .15s both}
+.ch-in circle.ch-pt{animation:chPop .38s cubic-bezier(.34,1.56,.64,1) both;transform-box:fill-box;transform-origin:center}
+.ch-in text.ch-lb{animation:chFade .4s ease-out both}
+html.tab.lime .app{margin:0;height:100%;border-radius:0;padding:8px}
+@keyframes chReveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes chFade{from{opacity:0}}
+@keyframes chPop{from{opacity:0;transform:scale(.2)}}
+@media (prefers-reduced-motion:reduce){.ch-in *{animation:none!important}}
+html.lime .lane-chart svg .colhl{fill:#C6EF4E;fill-opacity:.25}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="icon-defs"></defs></svg>
@@ -4373,8 +4447,8 @@ function liteApply(m){const h=document.documentElement;if(m==='on')h.classList.a
     if(!weak){let n=0,t0=0,slow=0;const f=t=>{if(!t0)t0=t;else if(t-t0>40)slow++;t0=t;if(++n<40)requestAnimationFrame(f);else if(slow>12&&liteMode()==='auto')h.classList.add('lite')};requestAnimationFrame(f)}}}
 liteApply(liteMode());
 const THEME_KEY='hrmTheme';
-function themeMode(){try{return localStorage.getItem(THEME_KEY)||'panel'}catch(e){return 'panel'}}
-function themeApply(m){m=m||themeMode();const h=document.documentElement;h.classList.toggle('panel',m==='panel');if(m==='panel'||m==='dark')h.setAttribute('data-theme','dark');else if(m==='light')h.setAttribute('data-theme','light');else h.removeAttribute('data-theme')}
+function themeMode(){try{return localStorage.getItem(THEME_KEY)||'lime'}catch(e){return 'lime'}}
+function themeApply(m){m=m||themeMode();const h=document.documentElement;h.classList.toggle('panel',m==='panel');h.classList.toggle('lime',m==='lime');if(m==='panel'||m==='dark')h.setAttribute('data-theme','dark');else if(m==='light'||m==='lime')h.setAttribute('data-theme','light');else h.removeAttribute('data-theme')}
 themeApply();
 /* tablet one-screen mode: auto = touch screen 600–1500px wide */
 const TAB_KEY='hrmTabMode';
@@ -4661,7 +4735,7 @@ function renderLane(el,id,days,opt){
   const today0=shiftDateTs(Date.now()),sh0=opt.shift||'all';const hasEv=days.some(d=>d<=today0&&dayEvents(id,d,sh0).length);
   const mkSz=Math.round(Math.min(26,Math.max(18,sw-4))),bandB=hasEv?mkSz+6:0,pt=hasEv?bandB+14:20,ih=Hh-pt-pb;
   const C={fg2:tok(el,'--fg-2'),fg3:tok(el,'--fg-3'),grid:tok(el,'--grid'),surf:tok(el,'--surface'),leak:tok(el,'--leak'),abn:tok(el,'--abn'),s:tok(el,'--s-'+id),hi:tok(el,'--primary-soft')};
-  C.t=mix(SYSHEX[id]||'#4F7FEA','#1d2533',.45);
+  C.t=mix(SYSHEX[id]||'#4F7FEA','#1d2533',.45);if(!opt.static&&document.documentElement.classList.contains('lime')){C.s='#A6D62A';C.hi='rgba(198,239,78,.35)'}
   const font=`font-family="Thonburi, 'Noto Sans Thai', sans-serif"`;
   const Yo=v=>pt+(1-(Math.max(c.yMin,Math.min(c.yMax,v))-c.yMin)/(c.yMax-c.yMin))*ih;
   const Yt=v=>pt+(1-(Math.max(tq.min,Math.min(tq.max,v))-tq.min)/(tq.max-tq.min))*ih;
@@ -4677,7 +4751,7 @@ function renderLane(el,id,days,opt){
   const series=(val,Y,kk)=>{const segs=[];let cur=[];const brk=()=>{if(cur.length)segs.push(cur);cur=[]};
     days.forEach((d,i)=>[kk].forEach(k=>{if(d>today)return;const l=slotList(id,d,k);if(!l.length){if(due(d,k))brk();return}
       l.forEach(r=>{const v=val(r);if(v==null||isNaN(v)){brk();return}cur.push({i,d,k,r,x:xOf(i,d,k,r.ts),y:Y(v),main:r===shiftRec(id,d,k)})})}));brk();return segs};
-  const PNL=document.documentElement.classList.contains('panel')&&!opt.static,SHC=PNL?{day:'#FF9F43',night:'#9D97FF'}:{day:'#E07800',night:'#4B45C6'},SHT={day:mix(SHC.day,'#ffffff',.18),night:mix(SHC.night,'#ffffff',.18)};
+  const PNL=document.documentElement.classList.contains('panel')&&!opt.static,LIM=document.documentElement.classList.contains('lime')&&!opt.static,SHC=PNL?{day:'#FF9F43',night:'#9D97FF'}:LIM?{day:'#0E0F0C',night:'#557A0A'}:{day:'#E07800',night:'#4B45C6'},SHT={day:mix(SHC.day,'#ffffff',.18),night:mix(SHC.night,'#ffffff',.18)};
   const oBy=shifts.map(k=>({k,segs:showO?series(r=>r.level,Yo,k):[]})),tBy=shifts.map(k=>({k,segs:showT?series(r=>r.temperature,Yt,k):[]}));
   const oSegs=[].concat(...oBy.map(g=>g.segs)),tSegs=[].concat(...tBy.map(g=>g.segs));
   /* abnormal drop at a reading (same rule as the record form / phone): vs the previous reading, refills added back */
@@ -4743,7 +4817,11 @@ function renderLane(el,id,days,opt){
   if(!opt.static)s+=`<rect class="colhl" x="0" y="${pt}" width="${sw}" height="${ih}" rx="6" fill="${C.s}" fill-opacity=".08" opacity="0"/>${shifts.map(k=>(showO?`<circle class="dothl" data-k="${k}" data-m="o" r="6" fill="${SHC[k]}" stroke="${C.surf}" stroke-width="3" opacity="0"/>`:'')+(showT?`<circle class="dothl" data-k="${k}" data-m="t" r="5" fill="${C.surf}" stroke="${SHT[k]}" stroke-width="2.6" opacity="0"/>`:'')).join('')}<rect class="hit" x="${pl}" y="0" width="${iw}" height="${Hh}" fill="transparent"/>`;
   s+=`</svg>`;el.innerHTML=s+mh;el.dataset.metric=met;el.dataset.lay=[W,pl,sw].join(',');
   if(!oSegs.length&&!tSegs.length&&!opt.static)el.insertAdjacentHTML('beforeend',`<div class="empty lane-empty">${L(showT&&!showO?'noData':'chartNoData')}</div>`);
-  if(opt.animate&&!(reduced()||liteOn()))$$('.ch-line',el).forEach(p=>{if(p.classList.contains('t'))return;try{const Ln=p.getTotalLength();p.style.strokeDasharray=Ln;p.style.strokeDashoffset=Ln;p.getBoundingClientRect();p.style.transition='stroke-dashoffset 1s cubic-bezier(.22,.9,.24,1)';p.style.strokeDashoffset=0;setTimeout(()=>{p.style.strokeDasharray=''},1100)}catch(e){}});
+  if(opt.animate&&!reduced()){const svg=el.querySelector('svg.ch');if(svg){const Wd=+svg.getAttribute('width')||W;
+    svg.querySelectorAll('path[fill^="url("]').forEach(p=>p.classList.add('ch-area'));
+    svg.querySelectorAll('circle').forEach(c=>{if(c.classList.contains('dothl'))return;c.classList.add('ch-pt');c.style.animationDelay=(0.12+0.85*(+c.getAttribute('cx')||0)/Wd).toFixed(3)+'s'});
+    svg.querySelectorAll('text').forEach(t=>{const x=+t.getAttribute('x')||0;if(x<pl+4||x>Wd-pr-4)return;t.classList.add('ch-lb');t.style.animationDelay=(0.35+0.85*x/Wd).toFixed(3)+'s'});
+    svg.classList.remove('ch-in');void svg.getBoundingClientRect();svg.classList.add('ch-in');setTimeout(()=>svg.classList.remove('ch-in'),2200)}}
   if(opt.static)return;
   const svg=$('svg',el),hl=$('.colhl',el);let lastI=-1;
   const move=ev=>{const r=svg.getBoundingClientRect();const k=r.width/W;const x=(ev.clientX-r.left)/k;const i=Math.max(0,Math.min(N-1,Math.floor((x-pl)/sw)));
@@ -4822,7 +4900,7 @@ const inShift=ts=>UI.shift==='all'||shiftKey(ts)===UI.shift;
 function lastRecShift(id){const rs=recs(id);for(let i=rs.length-1;i>=0;i--)if(inShift(rs[i].ts))return rs[i];return null}
 function shiftSeg(){return `<div class="shseg" role="radiogroup" aria-label="${esc(TS('shiftFilter'))}"><span class="shseg-l">${L('shiftFilter')}</span>${[['all','allShifts',null],['day','dayShift','day'],['night','nightShift','night']].map(([k,key,ic])=>`<button role="radio" aria-checked="${UI.shift===k}" class="${UI.shift===k?'on':''}" data-act="setShift" data-v="${k}">${ic?ico(ic,24):''}${L(key)}</button>`).join('')}<select class="sel shsel" data-bind="shift" aria-label="${esc(TS('shiftFilter'))}">${['all','day','night'].map(k=>`<option value="${k}"${UI.shift===k?' selected':''}>${esc(TS(k==='all'?'allShifts':k+'Shift'))}</option>`).join('')}</select></div>`}
 function metricSeg(){const it=[['oil','m_oil','oil'],['temperature','m_temp','temp'],['both','m_both','both']];return `<div class="shseg mseg" role="radiogroup" aria-label="${esc(TS('metricDisplay'))}"><span class="shseg-l">${L('metricDisplay')}</span>${it.map(([k,key,ic])=>`<button role="radio" aria-checked="${UI.metric===k}" class="${UI.metric===k?'on':''}" data-act="setMetric" data-v="${k}">${li(ic,20)}${L(key)}</button>`).join('')}<select class="sel shsel" data-bind="metric" aria-label="${esc(TS('metricDisplay'))}">${it.map(([k,key])=>`<option value="${k}"${UI.metric===k?' selected':''}>${esc(TS(key))}</option>`).join('')}</select></div>`}
-function graphLegend(){const o=UI.metric!=='temperature',t=UI.metric!=='oil';return `<div class="zlegend">${o?`<span class="lg lg-line"><svg width="26" height="10" aria-hidden="true"><path d="M1 5h24" stroke="var(--fg)" stroke-width="2.8" stroke-linecap="round"/><circle cx="13" cy="5" r="3.6" fill="var(--fg)"/></svg>${L('m_oil')}</span>`:''}${t?`<span class="lg lg-line"><svg width="26" height="10" aria-hidden="true"><path d="M1 5h24" stroke="var(--fg-2)" stroke-width="2" stroke-dasharray="5 3.5" stroke-linecap="round"/><circle cx="13" cy="5" r="2.6" fill="var(--surface)" stroke="var(--fg-2)" stroke-width="1.7"/></svg>${L('m_temp')}</span>`:''}${UI.shift!=='night'?`<span class="lg"><i class="pt" style="background:${document.documentElement.classList.contains('panel')?'#FF9F43':'#E07800'};width:16px;height:4px;border-radius:2px"></i>${L('shDay')}</span>`:''}${UI.shift!=='day'?`<span class="lg"><i class="pt" style="background:${document.documentElement.classList.contains('panel')?'#9D97FF':'#4B45C6'};width:16px;height:4px;border-radius:2px"></i>${L('shNight')}</span>`:''}${o?`<span class="lg"><i style="background:#E5484D;width:26px;height:12px;border-radius:6px"></i>${L('abnDropLg')}</span>`:''}${o?`<span class="lg lg-x"><i style="background:var(--abn);opacity:.35"></i>${L('zoneWarnLegend')}</span><span class="lg lg-x"><i style="background:var(--leak);opacity:.2"></i>${L('zoneCritLegend')}</span>`:''}<span class="lg lg-x"><i style="background:repeating-linear-gradient(135deg,var(--fg-3) 0 2px,transparent 2px 6px);opacity:.6"></i>${L('noRecord')}</span>${t?`<span class="lg"><i style="background:${HOT};width:11px;height:11px;border-radius:50%;box-shadow:0 0 0 4px rgba(217,54,60,.16)"></i><span class="bi"><span class="th">${(()=>{const v=SYS_IDS.map(k=>T_HIGH(k));return v.every(x=>x===v[0])?'เกิน '+v[0]+' °C':'เกินเกณฑ์อุณหภูมิ'})()}</span><span class="en">${(()=>{const v=SYS_IDS.map(k=>T_HIGH(k));return v.every(x=>x===v[0])?'Over '+v[0]+' °C':'Over temp limit'})()}</span></span></span>`:''}</div>`}
+function graphLegend(){const o=UI.metric!=='temperature',t=UI.metric!=='oil';return `<div class="zlegend">${o?`<span class="lg lg-line"><svg width="26" height="10" aria-hidden="true"><path d="M1 5h24" stroke="var(--fg)" stroke-width="2.8" stroke-linecap="round"/><circle cx="13" cy="5" r="3.6" fill="var(--fg)"/></svg>${L('m_oil')}</span>`:''}${t?`<span class="lg lg-line"><svg width="26" height="10" aria-hidden="true"><path d="M1 5h24" stroke="var(--fg-2)" stroke-width="2" stroke-dasharray="5 3.5" stroke-linecap="round"/><circle cx="13" cy="5" r="2.6" fill="var(--surface)" stroke="var(--fg-2)" stroke-width="1.7"/></svg>${L('m_temp')}</span>`:''}${UI.shift!=='night'?`<span class="lg"><i class="pt" style="background:${document.documentElement.classList.contains('panel')?'#FF9F43':document.documentElement.classList.contains('lime')?'#0E0F0C':'#E07800'};width:16px;height:4px;border-radius:2px"></i>${L('shDay')}</span>`:''}${UI.shift!=='day'?`<span class="lg"><i class="pt" style="background:${document.documentElement.classList.contains('panel')?'#9D97FF':document.documentElement.classList.contains('lime')?'#557A0A':'#4B45C6'};width:16px;height:4px;border-radius:2px"></i>${L('shNight')}</span>`:''}${o?`<span class="lg"><i style="background:#E5484D;width:26px;height:12px;border-radius:6px"></i>${L('abnDropLg')}</span>`:''}${o?`<span class="lg lg-x"><i style="background:var(--abn);opacity:.35"></i>${L('zoneWarnLegend')}</span><span class="lg lg-x"><i style="background:var(--leak);opacity:.2"></i>${L('zoneCritLegend')}</span>`:''}<span class="lg lg-x"><i style="background:repeating-linear-gradient(135deg,var(--fg-3) 0 2px,transparent 2px 6px);opacity:.6"></i>${L('noRecord')}</span>${t?`<span class="lg"><i style="background:${HOT};width:11px;height:11px;border-radius:50%;box-shadow:0 0 0 4px rgba(217,54,60,.16)"></i><span class="bi"><span class="th">${(()=>{const v=SYS_IDS.map(k=>T_HIGH(k));return v.every(x=>x===v[0])?'เกิน '+v[0]+' °C':'เกินเกณฑ์อุณหภูมิ'})()}</span><span class="en">${(()=>{const v=SYS_IDS.map(k=>T_HIGH(k));return v.every(x=>x===v[0])?'Over '+v[0]+' °C':'Over temp limit'})()}</span></span></span>`:''}</div>`}
 function graphHeadHTML(){return `${L('dailyLevel','card-title')}<div class="g-ctrls">${metricSeg()}${shiftSeg()}<button class="lbl-tg${UI.labels?' on':''}" data-act="toggleLabels" aria-pressed="${!!UI.labels}" title="${esc(TS('showValuesD'))}">${li('tag',18)}${L('showValues')}<span class="sw"><i></i></span></button></div>${graphLegend()}`}
 /* ================= zoom view: one system full screen, fewer days, scale fitted to the data ================= */
 const ZM={id:null,days:[],a:0,n:0,fit:true,shift:'all'};
@@ -4867,7 +4945,7 @@ window.addEventListener('resize',()=>{if($('#zoomv')&&!$('#zoomv').hidden)zoomDr
 function miniTank(id,lv){const c=sc(id),f=lv==null?0:Math.max(0,Math.min(1,(lv-c.yMin)/(c.yMax-c.yMin))),h=17*f,lowY=22-17*Math.max(0,Math.min(1,(c.low-c.yMin)/(c.yMax-c.yMin)));
   return `<svg class="mini-tank" viewBox="0 0 18 26" aria-hidden="true"><path d="M2.5 6c0-3 13-3 13 0v15c0 3-13 3-13 0z" fill="#4A525D" stroke="#0E1115" stroke-width="1.1"/><rect x="6" y="5" width="6" height="17" rx="2" fill="#0B0E12"/><rect x="6" y="${22-h}" width="6" height="${h}" rx="1.5" fill="var(--s-${id})"/><path d="M5 ${lowY}h8" stroke="#FF5A5F" stroke-width="1" stroke-dasharray="1.5 1"/><path d="M4.2 7.5v12" stroke="#fff" stroke-width="1" opacity=".35" stroke-linecap="round"/></svg>`}
 function laneHeadHTML(id){const c=sc(id),q=tc(id);const lr=lastRecShift(id);const st=lr?levelStatus(lr.level,id):null;const m=UI.metric;
-  return `${document.documentElement.classList.contains('panel')?miniTank(id,lr?lr.level:null):'<span class="sys-dot"></span>'}<span class="lane-name">${esc(T('sys_'+id))}</span><button type="button" class="icon-btn zoom-btn" data-act="zoomOpen" data-sys="${id}" title="${esc(TS('zoomBtn'))} · ${esc(TS('zoomDbl'))}" aria-label="${esc(TS('zoomBtn'))}">${li('expand',18)}</button><span class="lane-oil">${esc(systemOilMapping[id])}</span>
+  return `${/(^| )(panel|lime)( |$)/.test(document.documentElement.className)?miniTank(id,lr?lr.level:null):'<span class="sys-dot"></span>'}<span class="lane-name">${esc(T('sys_'+id))}</span><button type="button" class="icon-btn zoom-btn" data-act="zoomOpen" data-sys="${id}" title="${esc(TS('zoomBtn'))} · ${esc(TS('zoomDbl'))}" aria-label="${esc(TS('zoomBtn'))}">${li('expand',18)}</button><span class="lane-oil">${esc(systemOilMapping[id])}</span>
       <span class="lane-cur">${L('latest','lc-k')}<b class="num lc-oil" title="${esc(TS('oilLevel'))}">${lr?fLit(lr.level):'—'}<small> L</small></b><span class="lc-temp" title="${esc(TS('temperature'))}">${li('temp',16)}<b class="num">${lr&&lr.temperature!=null?fTemp(lr.temperature):'—'}<small> °C</small></b></span>${stStatus(st)}${lr?`<span class="lc-t num">${esc(T('updated'))} ${sod(lr.ts)===sod(Date.now())?'':fDs(lr.ts)+' '}${fT(lr.ts)} · ${esc(T(shiftKey(lr.ts)==='day'?'dayShift':'nightShift'))}</span>`:''}</span>
       <span class="lane-scale num">${m!=='temperature'?`${fN(c.yMin)}–${fN(c.yMax)} L · ${esc(T('lowLine'))} ${fN(c.low)}`:''}${m==='both'?' · ':''}${m!=='oil'?`${q.min}–${q.max} °C`:''}</span>`}
 function tlCardHTML(mev,open){const tevs=mev.slice().sort((x,z)=>z.ts-x.ts).slice(0,10);
@@ -4877,7 +4955,7 @@ function tlCardHTML(mev,open){const tevs=mev.slice().sort((x,z)=>z.ts-x.ts).slic
 function setGraphPref(k,v){if(k==='labels'){UI.labels=!!v;store.set('hrmHydraulicGraphLabels',v?'1':'0')}else if(k==='metric'){if(!METRICS.includes(v))return;UI.metric=v;store.set(K_GM,v)}else if(k==='shift'){if(!['all','day','night'].includes(v))return;UI.shift=v;store.set(K_GS,v)}
   if(UI.page!=='dashboard'||!$('.dash6')){render(false,true);return}gtipHide();
   $('.graph-card > .card-head').innerHTML=graphHeadHTML();
-  $$('.dash6 .lane').forEach(ln=>{const ch=$('.lane-chart',ln);const id=ch.dataset.sys;$('.lane-h',ln).innerHTML=laneHeadHTML(id);ch.dataset.shift=UI.shift;ch.dataset.metric=UI.metric;renderLane(ch,id,ch.dataset.days.split(',').map(Number),{height:ch.clientHeight,shift:UI.shift,metric:UI.metric,labels:UI.labels})});
+  $$('.dash6 .lane').forEach(ln=>{const ch=$('.lane-chart',ln);const id=ch.dataset.sys;$('.lane-h',ln).innerHTML=laneHeadHTML(id);ch.dataset.shift=UI.shift;ch.dataset.metric=UI.metric;renderLane(ch,id,ch.dataset.days.split(',').map(Number),{height:ch.clientHeight,shift:UI.shift,metric:UI.metric,labels:UI.labels,animate:true})});
   const [a,b]=monthRange(UI.month);const mev=EVTS.filter(e=>e.ts>=a&&e.ts<b&&inShift(e.ts));const open=EVTS.filter(e=>e.eventType==='abnormal'&&(e.status||'investigate')==='investigate').sort((x,z)=>z.ts-x.ts);
   const tl=$('.dash6 .tl3-card');if(tl)tl.outerHTML=tlCardHTML(mev,open)}
 function vDashboard(){
@@ -5095,7 +5173,7 @@ function lineCardHTML(){const c=mobCfg(),wa=c.url.trim();setTimeout(lineLoad,50)
 function tabCardHTML(){const m=tabMode(),b=(v,k)=>`<button type="button" class="lang-opt lite-opt" data-act="tabSet" data-v="${v}" aria-pressed="${m===v}"><span class="ck">${li('check',16)}</span>${L(k)}</button>`;
   return `<div class="card" id="tab-card" data-nosnap="1"><div class="card-head">${L('tabTitle','card-title')}<span class="hint" style="margin-left:auto">${tabOn()?esc(T('liteNowOn')):esc(T('liteNowOff'))}</span></div><p class="hint">${T('tabHint')}<br>${S2('tabHint')}</p><div class="lite-row">${b('auto','liteAuto')}${b('on','liteOnL')}${b('off','liteOffL')}</div></div>`}
 function themeCardHTML(){const m=themeMode(),b=(v,th,en)=>`<button type="button" class="lang-opt lite-opt" data-act="themeSet" data-v="${v}" aria-pressed="${m===v}"><span class="ck">${li('check',16)}</span><span class="bi"><span class="th">${th}</span><span class="en">${en}</span></span></button>`;
-  return `<div class="card" id="theme-card" data-nosnap="1"><div class="card-head"><span class="bi card-title"><span class="th">ธีมหน้าจอ</span><span class="en">Screen theme</span></span></div><p class="hint">แผงควบคุม = เทาเข้ม ไฟ LED ตัวเลขเรืองแสง · ตั้งแยกแต่ละเครื่อง<br>Control panel = dark graphite, LEDs, glowing numbers · per computer</p><div class="lite-row">${b('panel','แผงควบคุม','Control panel')}${b('light','สว่าง','Light')}${b('dark','มืด','Dark')}${b('auto','ตามเครื่อง','System')}</div></div>`}
+  return `<div class="card" id="theme-card" data-nosnap="1"><div class="card-head"><span class="bi card-title"><span class="th">ธีมหน้าจอ</span><span class="en">Screen theme</span></span></div><p class="hint">ไลม์ = พื้นครีม แถบดำ ไฮไลต์เขียวมะนาว · แผงควบคุม = เทาเข้ม ไฟ LED · ตั้งแยกแต่ละเครื่อง<br>Lime = cream board, black rail, lime highlight · Control panel = dark graphite, LEDs · per computer</p><div class="lite-row">${b('lime','ไลม์','Lime')}${b('panel','แผงควบคุม','Control panel')}${b('light','สว่าง','Light')}${b('dark','มืด','Dark')}${b('auto','ตามเครื่อง','System')}</div></div>`}
 function liteCardHTML(){const m=liteMode(),b=(v,k)=>`<button type="button" class="lang-opt lite-opt" data-act="liteSet" data-v="${v}" aria-pressed="${m===v}"><span class="ck">${li('check',16)}</span>${L(k)}</button>`;
   return `<div class="card" id="lite-card" data-nosnap="1"><div class="card-head">${L('liteTitle','card-title')}<span class="hint" style="margin-left:auto">${liteOn()?esc(T('liteNowOn')):esc(T('liteNowOff'))}</span></div><p class="hint">${T('liteHint')}<br>${S2('liteHint')}</p><div class="lite-row">${b('auto','liteAuto')}${b('on','liteOnL')}${b('off','liteOffL')}</div></div>`}
 function vSettings(){const f=(id,key,v,type,extra)=>`<label class="field">${L(key,'flabel')}<input class="inp" id="s-${id}" type="${type||'text'}" value="${esc(v)}" ${extra||''}></label>`;
