@@ -454,7 +454,7 @@ function lineFetch_(path, method, body, token) {
   let j = {}; try { j = JSON.parse(r.getContentText() || '{}'); } catch (e) { j = {}; }
   return { code: r.getResponseCode(), body: j };
 }
-function linePush_(text, flex) {
+function linePush_(text, flex) {   // note: LINE counts a group push once per member of the group
   const L = lineProps_();
   if (!L.token) return { ok: false, error: 'no_token' };
   if (!L.group) return { ok: false, error: 'no_group' };
@@ -462,7 +462,7 @@ function linePush_(text, flex) {
   let r = lineFetch_('/message/push', 'post', { to: L.group, messages: [flex || plain] }, L.token);
   if (flex && r.code === 400) r = lineFetch_('/message/push', 'post', { to: L.group, messages: [plain] }, L.token);   // card refused → plain text
   const pr = PropertiesService.getScriptProperties();
-  if (r.code !== 200) { const e = 'LINE ' + r.code + ': ' + (r.body.message || ''); pr.setProperty('LINE_ERR', e); return { ok: false, error: 'line_' + r.code, message: r.body.message || '' }; }
+  if (r.code !== 200) { const res = { ok: false, error: 'line_' + r.code, message: r.body.message || '' }; pr.setProperty('LINE_ERR', Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'MM-dd HH:mm') + ' · ' + lineErrText_(res) + ' · ' + (r.body.message || '')); return res; }
   pr.setProperties({ LINE_ERR: '', LINE_LAST_AT: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss').slice(0, 16), LINE_LAST_MSG: String(text).slice(0, 300) });
   return { ok: true };
 }
@@ -578,17 +578,49 @@ function alertText_(c, sn, miss) {
 }
 /* timer (every 5 minutes): post once per shift, inside the last N minutes */
 function lineTick(nowMs) {
+  const pr = PropertiesService.getScriptProperties(), now = nowMs ? new Date(nowMs) : new Date();
+  pr.setProperty('LINE_TICK_AT', Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm'));   // proves the 5-minute timer is alive
   const L = lineProps_();
-  if (!L.on || !L.token || !L.group) return { ok: true, skip: 'off' };
-  const c = cfg_(), sn = shiftNow_(c, nowMs ? new Date(nowMs) : new Date()), key = sn.shiftDate + '_' + sn.shift;
+  const c = cfg_(), sn = shiftNow_(c, now), key = sn.shiftDate + '_' + sn.shift;
   if (sn.left > L.before || L.last === key) return { ok: true, skip: 'not_now', shift: sn };
-  if (calTeam_(c, sn.shiftDate, sn.shift) === '') return { ok: true, skip: 'no_shift', shift: sn };   // holiday / shutdown in the shift calendar
+  if (!L.on || !L.token || !L.group) { tickLog_(key, !L.on ? 'ปิดการแจ้งเตือนอยู่' : !L.token ? 'ไม่มี Token' : 'ยังไม่ได้เชื่อมกลุ่ม'); pr.setProperty('LINE_LAST', key); return { ok: true, skip: 'off' }; }
+  if (calTeam_(c, sn.shiftDate, sn.shift) === '') { tickLog_(key, 'วันหยุดตามปฏิทินกะ'); pr.setProperty('LINE_LAST', key); return { ok: true, skip: 'no_shift', shift: sn }; }
   const miss = shiftMissing_(sn.shiftDate, sn.shift);
-  PropertiesService.getScriptProperties().setProperty('LINE_LAST', key);
-  if (!miss.length) return { ok: true, complete: true, shift: sn };
+  if (!miss.length) { tickLog_(key, 'ครบแล้ว ไม่ต้องเตือน'); pr.setProperty('LINE_LAST', key); return { ok: true, complete: true, shift: sn }; }
   const r = linePush_(alertText_(c, sn, miss), shiftCard_(c, sn, miss, 'alert'));
+  /* mark the shift as done only when LINE accepted the message; a refused send is tried again on the next tick until the shift ends */
+  if (r.ok) { pr.setProperty('LINE_LAST', key); tickLog_(key, 'ส่งแจ้งเตือนแล้ว · ขาด ' + miss.join(',')); }
+  else tickLog_(key, 'ส่งไม่สำเร็จ: ' + lineErrText_(r));
   return { ok: r.ok, sent: r.ok, missing: miss, shift: sn, error: r.error };
 }
+/* last decisions of the shift alert (newest first), for checking why a shift was or was not alerted */
+function tickLog_(key, what) {
+  const pr = PropertiesService.getScriptProperties(), at = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'MM-dd HH:mm');
+  let l = []; try { l = JSON.parse(pr.getProperty('LINE_TICKLOG') || '[]'); } catch (e) { l = []; }
+  if (l[0] && l[0].k === key && l[0].w === what) return;
+  l.unshift({ at: at, k: key, w: String(what).slice(0, 120) }); pr.setProperty('LINE_TICKLOG', JSON.stringify(l.slice(0, 20)));
+}
+function lineErrText_(r) {
+  const m = String((r && r.message) || '');
+  if (r && r.error === 'line_429') return /monthly limit/i.test(m) ? 'โควตาข้อความ LINE ของเดือนนี้หมดแล้ว' : 'LINE จำกัดการส่งชั่วคราว (429)';
+  if (r && r.error === 'line_401') return 'Token ใช้ไม่ได้แล้ว (401)';
+  if (r && (r.error === 'line_400' || r.error === 'line_403' || r.error === 'line_404')) return 'บอทไม่อยู่ในกลุ่มแล้ว หรือกลุ่มเปลี่ยน (' + r.error.slice(5) + ')';
+  return (r && (r.error || '')) + (m ? ' ' + m : '');
+}
+/* LINE health for the check pages: timer alive, last decisions, quota, group size (no token or group id) */
+function lineHealth_() {
+  const L = lineProps_(), pr = PropertiesService.getScriptProperties();
+  const o = { on: L.on, token: !!L.token, group: !!L.group, groupName: L.groupName, timer: lineTimerOn_(), tickAt: pr.getProperty('LINE_TICK_AT') || '', lastAt: L.lastAt, err: L.err, before: L.before };
+  try { o.log = JSON.parse(pr.getProperty('LINE_TICKLOG') || '[]').slice(0, 8); } catch (e) { o.log = []; }
+  if (L.token) {
+    try { const q = lineFetch_('/message/quota', 'get', null, L.token), u = lineFetch_('/message/quota/consumption', 'get', null, L.token);
+      if (q.code === 200) o.quota = { type: q.body.type, limit: q.body.value == null ? null : q.body.value, used: u.body.totalUsage == null ? null : u.body.totalUsage }; } catch (e) { }
+    if (L.group) try { const g = lineFetch_('/group/' + L.group + '/members/count', 'get', null, L.token); if (g.code === 200) o.members = g.body.count; else o.groupErr = g.code; } catch (e) { }
+  }
+  return o;
+}
+/* run from the editor to see why alerts did or did not go out (View → Logs / Execution log) */
+function lineDebug() { const h = lineHealth_(); Logger.log(JSON.stringify(h, null, 2)); return h; }
 /* run once from the editor: allows sending to LINE and makes the 5-minute timer */
 function setupLine() {
   ScriptApp.getProjectTriggers().forEach(t => { if (t.getHandlerFunction() === 'lineTick') ScriptApp.deleteTrigger(t); });
@@ -627,6 +659,7 @@ function lineApi_(p, c) {
   if (L.token) {
     try { const q = lineFetch_('/message/quota', 'get', null, L.token), u = lineFetch_('/message/quota/consumption', 'get', null, L.token); if (q.code === 200) out.quota = { type: q.body.type, limit: q.body.value == null ? null : q.body.value, used: u.body.totalUsage == null ? null : u.body.totalUsage }; } catch (e) { }
   }
+  try { const h = lineHealth_(); out.tickAt = h.tickAt; out.log = h.log; out.members = h.members; out.groupErr = h.groupErr; } catch (e) { }
   return out;
 }
 /* LINE webhook (LINE posts here): remember the group when the bot joins; "เช็ค" in the group replies the shift status (replies are free) */
@@ -712,12 +745,13 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.9.3';
+const SERVER_VER = 'v1.9.4';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   const p = PropertiesService.getScriptProperties();
   return { ok: true, version: SERVER_VER, time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'),
-    autoUpdate: { on: autoTimerOn_(), deployed: p.getProperty('AU_DEPLOYED') || '', at: p.getProperty('AU_AT') || '', error: p.getProperty('AU_ERR') || '' } };
+    autoUpdate: { on: autoTimerOn_(), deployed: p.getProperty('AU_DEPLOYED') || '', at: p.getProperty('AU_AT') || '', error: p.getProperty('AU_ERR') || '' },
+    line: (function () { try { const h = lineHealth_(); delete h.groupName; return h; } catch (e) { return { error: String(e.message || e) }; } })() };
 }
 
 /* ================= self-update from GitHub =================
