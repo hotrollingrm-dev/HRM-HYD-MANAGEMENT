@@ -4650,7 +4650,7 @@ function makeRec(id,ts,level,status,op,note,fromEvent,team,temp){return recField
 function detectFor(rec,silent){inval();
   const rs=recs(rec.systemType);const i=rs.findIndex(r=>r.id===rec.id);if(i<=0)return null;const prev=rs[i-1];const c=sc(rec.systemType);let made=null;
   const lo=lowOf(rec.systemType,rec.status),plo=lowOf(rec.systemType,prev.status);if(rec.level<lo&&!(prev.level<plo)&&!EVTS.some(e=>e.eventType==='low'&&e.recId===rec.id)){EVTS.push(Object.assign({id:'EVT-'+uid(),systemType:rec.systemType,eventType:'low',ts:rec.ts,level:rec.level,auto:true,recId:rec.id,operator:rec.operator||'',note:''},stamp(rec.ts)));made='low'}
-  const hrs=(rec.ts-prev.ts)/H;if(hrs<0.25||hrs>CFG.gapH+1)return made;
+  const hrs=(rec.ts-prev.ts)/H;if(hrs<0.25||hrs>CFG.gapH+1||!sameSt(prev.status,rec.status))return made;
   let drop=prev.level-rec.level;EVTS.forEach(e=>{if(e.systemType===rec.systemType&&e.ts>prev.ts&&e.ts<=rec.ts&&e.eventType!=='abnormal'&&e.eventType!=='low')drop+=evSigned(e)});
   const rate=drop/hrs;
   if(rate>c.abnormalRate&&drop>swMax(rec.systemType)&&!EVTS.some(e=>(e.eventType==='abnormal'||e.fromAbnormal)&&e.recId===rec.id)){EVTS.push(Object.assign({id:'EVT-'+uid(),systemType:rec.systemType,eventType:'abnormal',ts:rec.ts,auto:true,recId:rec.id,fromTs:prev.ts,beforeLevel:prev.level,afterLevel:rec.level,rate:r1(rate),amount:Math.round(Math.max(0,drop-c.normalRate*hrs)),status:'investigate',operator:'',note:''},stamp(rec.ts)));made='abnormal'}
@@ -4737,7 +4737,10 @@ function statsWin(a,b,id){
   const openR=prev||inW[0]||null,closeR=inW.length?inW[inW.length-1]:prev;
   const evs=EVTS.filter(e=>e.systemType===id&&e.ts>a&&e.ts<=b);const sum=(ty,f)=>evs.filter(e=>e.eventType===ty).reduce((s,e)=>s+(+e[f]||0),0);
   const o={id,run,stop,miss,refill:sum('refill','addedVolume'),ocAdded:sum('oil_change','addedVolume'),ocDrained:sum('oil_change','drainedVolume'),leak:sum('leak','amount'),drain:sum('drain','amount'),adj:evs.filter(e=>e.eventType==='adjust').reduce((s,e)=>s+evSigned(e),0),opening:openR?openR.level:null,closing:closeR?closeR.level:null,events:evs,records:inW};
-  o.ocNet=o.ocAdded-o.ocDrained;o.cons=(o.opening==null||o.closing==null)?null:o.opening-o.closing+o.refill+o.ocNet-o.leak-o.drain+o.adj;return o}
+  o.ocNet=o.ocAdded-o.ocDrained;o.cons=(o.opening==null||o.closing==null)?null:o.opening-o.closing+o.refill+o.ocNet-o.leak-o.drain+o.adj;
+  /* consumption = sum of reading-to-reading use, skipping any step where the machine status changed (run ↔ not running levels are not comparable) */
+  {const ch=(prev?[prev]:[]).concat(inW);if(ch.length>=2&&ch.some((r,i)=>i&&!sameSt(ch[i-1].status,r.status))){let c=0;for(let i=1;i<ch.length;i++){const p=ch[i-1],q=ch[i];if(!sameSt(p.status,q.status))continue;c+=p.level-q.level;EVTS.forEach(e=>{if(e.systemType===id&&e.ts>Math.max(p.ts,a)&&e.ts<=q.ts)c+=evSigned(e)})}o.cons=c}}
+  return o}
 function statsMulti(wins,id){const parts=wins.map(w=>statsWin(w[0],w[1],id));const o={id,run:0,stop:0,miss:0,refill:0,ocAdded:0,ocDrained:0,ocNet:0,leak:0,drain:0,adj:0,cons:null,events:[],records:[]};
   parts.forEach(p=>{['run','stop','miss','refill','ocAdded','ocDrained','ocNet','leak','drain','adj'].forEach(k=>o[k]+=p[k]);if(p.cons!=null)o.cons=(o.cons||0)+p.cons;o.events=o.events.concat(p.events);o.records=o.records.concat(p.records)});
   const f=parts.find(p=>p.opening!=null),l=parts.slice().reverse().find(p=>p.closing!=null);o.opening=f?f.opening:null;o.closing=l?l.closing:null;return o}
@@ -4830,7 +4833,9 @@ function slotList(id,d,sh){if(!_sv)_sv={};if(!_sv[id]){const m={};recs(id).forEa
 function shiftRec(id,d,sh){const l=slotList(id,d,sh);if(!l.length)return null;for(let i=l.length-1;i>=0;i--)if(!l[i].fromEvent)return l[i];return l[l.length-1]}
 const metricHas=(m,k)=>m==='both'||m===k;
 /* abnormal drop at a reading: vs the previous reading (any shift, ≤26 h), refills added back, faster than the system's limit */
-function abnOf(id,r){const c=sc(id),prev=recAtOrBefore(r.ts-1,id);if(!prev)return null;const hrs=(r.ts-prev.ts)/H;if(hrs<0.25||hrs>26)return null;let drop=prev.level-r.level;
+/* running and not-running levels differ by nature (oil in the pipes vs back in the tank) → only compare readings with the same machine status */
+function stN(s){return s==='stop'?'stop':'run'}function sameSt(a,b){return stN(a)===stN(b)}
+function abnOf(id,r){const c=sc(id),prev=recAtOrBefore(r.ts-1,id);if(!prev||!sameSt(prev.status,r.status))return null;const hrs=(r.ts-prev.ts)/H;if(hrs<0.25||hrs>26)return null;let drop=prev.level-r.level;
   EVTS.forEach(e=>{if(e.systemType===id&&e.ts>prev.ts&&e.ts<=r.ts&&e.eventType!=='abnormal'&&e.eventType!=='low')drop+=evSigned(e)});const rate=drop/hrs;
   if(!(rate>(+c.abnormalRate||5))||drop<=swMax(id))return null;const m=/ลดผิดปกติ(?: \[[a-z,]+\])?: ?(.*)$/.exec(String(r.note||''));return {drop:Math.round(drop),rate:Math.round(rate*10)/10,why:m?m[1]:''}}
 const T_HIGH=id=>{const v=+(id?tc(id).high:NaN);return isFinite(v)&&v>0?v:55};
@@ -4864,7 +4869,7 @@ function renderLane(el,id,days,opt){
   /* one line per shift: day readings joined day to day, night readings night to night */
   const series=(val,Y,kk)=>{const segs=[];let cur=[];const brk=()=>{if(cur.length)segs.push(cur);cur=[]};
     days.forEach((d,i)=>[kk].forEach(k=>{if(d>today)return;const l=slotList(id,d,k);if(!l.length){if(due(d,k))brk();return}
-      l.forEach(r=>{const v=val(r);if(v==null||isNaN(v)){brk();return}cur.push({i,d,k,r,x:xOf(i,d,k,r.ts),y:Y(v),main:r===shiftRec(id,d,k)})})}));brk();return segs};
+      l.forEach(r=>{const v=val(r);if(v==null||isNaN(v)){brk();return}if(Y===Yo&&cur.length&&!sameSt(cur[cur.length-1].r.status,r.status))brk();cur.push({i,d,k,r,x:xOf(i,d,k,r.ts),y:Y(v),main:r===shiftRec(id,d,k)})})}));brk();return segs};
   const PNL=document.documentElement.classList.contains('panel')&&!opt.static,LIM=document.documentElement.classList.contains('lime')&&!opt.static,SHC=PNL?{day:'#FF9F43',night:'#9D97FF'}:LIM?{day:'#E07800',night:'#3F44C9'}:{day:'#E07800',night:'#4B45C6'},SHT={day:mix(SHC.day,'#ffffff',.18),night:mix(SHC.night,'#ffffff',.18)};
   const oBy=shifts.map(k=>({k,segs:showO?series(r=>r.level,Yo,k):[]})),tBy=shifts.map(k=>({k,segs:showT?series(r=>r.temperature,Yt,k):[]}));
   const oSegs=[].concat(...oBy.map(g=>g.segs)),tSegs=[].concat(...tBy.map(g=>g.segs));
@@ -5415,7 +5420,7 @@ function saveRecord3(){const err=$('#r4-err');const fail=(k,v)=>{err.innerHTML=L
     plan.push({sh,ts,rc,tm,status:$('#r4-status-'+sh).dataset.v,vals})}
   if(!plan.length){const f=$('#rec4Form .r4-lv');if(f){f.classList.add('bad');f.focus()}return fail('errNothing')}
   /* abnormal drop vs the previous reading → the cause must be given (same rule as the phone) */
-  const dl=[];plan.forEach(p=>p.vals.forEach(x=>{if(x.rid)return;const prev=recAtOrBefore(p.ts-1,x.id);if(!prev)return;const hrs=(p.ts-prev.ts)/H;if(hrs<0.25||hrs>26)return;
+  const dl=[];plan.forEach(p=>p.vals.forEach(x=>{if(x.rid)return;const prev=recAtOrBefore(p.ts-1,x.id);if(!prev||!sameSt(prev.status,p.status))return;const hrs=(p.ts-prev.ts)/H;if(hrs<0.25||hrs>26)return;
     let drop=prev.level-x.n;EVTS.forEach(e=>{if(e.systemType===x.id&&e.ts>prev.ts&&e.ts<=p.ts&&e.eventType!=='abnormal'&&e.eventType!=='low')drop+=evSigned(e)});const rate=drop/hrs;
     if(rate>(+sc(x.id).abnormalRate||5)&&drop>swMax(x.id))dl.push({sh:p.sh,id:x.id,from:prev.level,to:Math.round(x.n),drop:Math.round(drop),hrs:Math.round(hrs*10)/10,rate:Math.round(rate*10)/10})}));
   let dropWhy='';{const box=r4DropBox(dl);if(dl.length){const v=box.dataset.v||'',tx=$('#r4-droptext');if(!v){box.scrollIntoView({block:'center'});return fail('errDropReason')}

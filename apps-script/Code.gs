@@ -312,13 +312,14 @@ function phoneLast(code) {
   if (String(code || '').trim() !== c.TEAM_CODE) return { ok: false, error: 'bad_code' };
   const last = {}, temps = {}, scale = {};
   const putT = (k, t, ts) => { if (t === '' || t == null || !isFinite(Number(t)) || !isFinite(ts)) return; if (!temps[k] || ts > temps[k].ts) temps[k] = { temp: Number(t), ts: ts }; };
-  const put = (k, level, ts, t) => { putT(k, t, ts); if (!isFinite(level) || !isFinite(ts)) return; if (!last[k] || ts > last[k].ts) last[k] = { level: Math.round(Number(level)), ts: ts }; };
-  try { const txt = dbRead_(); if (txt) { const db = JSON.parse(txt); (db.records || []).forEach(r => { if (r && r.systemType && r.level != null) put(r.systemType, Number(r.level), Number(r.ts), r.temperature); });
+  /* latest level overall, plus the latest level for each machine status (running / not running levels are compared only with the same status) */
+  const put = (k, level, ts, t, stt) => { putT(k, t, ts); if (!isFinite(level) || !isFinite(ts)) return; const L = Math.round(Number(level)), s = stt === 'stop' ? 'stop' : stt === 'run' ? 'run' : (last[k] && last[k].status) || ''; if (!last[k] || ts > last[k].ts) last[k] = Object.assign({}, last[k] || {}, { level: L, ts: ts, status: s }); if (s) { const by = last[k].by = last[k].by || {}; if (!by[s] || ts > by[s].ts) by[s] = { level: L, ts: ts }; } };
+  try { const txt = dbRead_(); if (txt) { const db = JSON.parse(txt); (db.records || []).forEach(r => { if (r && r.systemType && r.level != null) put(r.systemType, Number(r.level), Number(r.ts), r.temperature, r.status); });
     const sc = db.config && db.config.sys; if (sc) SYS.forEach(x => { const o = sc[x[0]]; if (o && isFinite(o.yMin) && isFinite(o.yMax)) scale[x[0]] = { lo: Number(o.yMin), hi: Number(o.yMax), low: isFinite(o.low) ? Number(o.low) : Number(o.yMin), lowStop: isFinite(o.lowStop) ? Number(o.lowStop) : LOW_STOP_[x[0]] }; }); } } catch (e) { }
   const ss = SpreadsheetApp.getActiveSpreadsheet(), ib = ss.getSheetByName(INBOX);
   if (ib && ib.getLastRow() > 1) rows_(ib.getRange(2, 1, ib.getLastRow() - 1, HEAD.length), HEAD).forEach(v => {
     const ts = tsBkk_(v[2], v[4], v[3], c); if (ts == null) return;
-    SYS.forEach(x => { const L = String(v[HEAD.indexOf(x[1])]).replace(/,/g, '').trim(); if (L !== '') put(x[0], Number(L), ts, String(v[HEAD.indexOf(x[2])]).trim()); });
+    SYS.forEach(x => { const L = String(v[HEAD.indexOf(x[1])]).replace(/,/g, '').trim(); if (L !== '') put(x[0], Number(L), ts, String(v[HEAD.indexOf(x[2])]).trim(), String(v[HEAD.indexOf('status')]).trim()); });
   });
   const ev = ss.getSheetByName(EVENTS);
   if (ev && ev.getLastRow() > 1) rows_(ev.getRange(2, 1, ev.getLastRow() - 1, HEAD_EV.length), HEAD_EV).forEach(v => {
@@ -746,7 +747,7 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.9.5';
+const SERVER_VER = 'v1.9.6';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   const p = PropertiesService.getScriptProperties();
