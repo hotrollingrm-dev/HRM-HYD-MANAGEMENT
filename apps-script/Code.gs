@@ -306,6 +306,7 @@ function sysRates_(c) {
   String(c.SYS_RATES || '').split(/[\s,;]+/).forEach(x => { const m = /^(servo|auxiliary|lubrication):(\d+(\.\d+)?)$/.exec(x); if (m) o[m[1]] = Number(m[2]); });
   return o;
 }
+const LOW_STOP_ = { servo: 5700, auxiliary: 5000, lubrication: 5100 };
 function phoneLast(code) {
   const c = cfg_();
   if (String(code || '').trim() !== c.TEAM_CODE) return { ok: false, error: 'bad_code' };
@@ -313,7 +314,7 @@ function phoneLast(code) {
   const putT = (k, t, ts) => { if (t === '' || t == null || !isFinite(Number(t)) || !isFinite(ts)) return; if (!temps[k] || ts > temps[k].ts) temps[k] = { temp: Number(t), ts: ts }; };
   const put = (k, level, ts, t) => { putT(k, t, ts); if (!isFinite(level) || !isFinite(ts)) return; if (!last[k] || ts > last[k].ts) last[k] = { level: Math.round(Number(level)), ts: ts }; };
   try { const txt = dbRead_(); if (txt) { const db = JSON.parse(txt); (db.records || []).forEach(r => { if (r && r.systemType && r.level != null) put(r.systemType, Number(r.level), Number(r.ts), r.temperature); });
-    const sc = db.config && db.config.sys; if (sc) SYS.forEach(x => { const o = sc[x[0]]; if (o && isFinite(o.yMin) && isFinite(o.yMax)) scale[x[0]] = { lo: Number(o.yMin), hi: Number(o.yMax), low: isFinite(o.low) ? Number(o.low) : Number(o.yMin) }; }); } } catch (e) { }
+    const sc = db.config && db.config.sys; if (sc) SYS.forEach(x => { const o = sc[x[0]]; if (o && isFinite(o.yMin) && isFinite(o.yMax)) scale[x[0]] = { lo: Number(o.yMin), hi: Number(o.yMax), low: isFinite(o.low) ? Number(o.low) : Number(o.yMin), lowStop: isFinite(o.lowStop) ? Number(o.lowStop) : LOW_STOP_[x[0]] }; }); } } catch (e) { }
   const ss = SpreadsheetApp.getActiveSpreadsheet(), ib = ss.getSheetByName(INBOX);
   if (ib && ib.getLastRow() > 1) rows_(ib.getRange(2, 1, ib.getLastRow() - 1, HEAD.length), HEAD).forEach(v => {
     const ts = tsBkk_(v[2], v[4], v[3], c); if (ts == null) return;
@@ -745,7 +746,7 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.9.4';
+const SERVER_VER = 'v1.9.5';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   const p = PropertiesService.getScriptProperties();

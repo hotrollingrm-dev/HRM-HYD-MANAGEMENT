@@ -198,8 +198,8 @@ textarea{width:100%;min-height:84px;border:1px solid var(--well-line);border-rad
 @keyframes breathe{50%{box-shadow:inset 0 2px 6px rgba(0,0,0,.55),0 0 0 5px color-mix(in srgb,var(--c) 14%,transparent),0 0 22px color-mix(in srgb,var(--c) 45%,transparent)}}
 .fld:has(input.bad){border-color:var(--bad);box-shadow:0 0 0 3px rgba(255,90,95,.25)}
 .fld input.bad{animation:none;box-shadow:none!important;border:0!important}
-.fld.t.hot{border-color:var(--bad);box-shadow:inset 0 2px 6px rgba(0,0,0,.55),0 0 0 3px rgba(255,90,95,.22),0 0 16px rgba(255,90,95,.35)}
-.fld.t.hot input{color:#FFB3B5;text-shadow:0 0 10px rgba(255,90,95,.6)}.fld.t.hot .k span:first-child{color:var(--bad);font-weight:600}
+.fld.hot,.fld.t.hot{border-color:var(--bad);box-shadow:inset 0 2px 6px rgba(0,0,0,.55),0 0 0 3px rgba(255,90,95,.22),0 0 16px rgba(255,90,95,.35)}
+.fld.hot input,.fld.t.hot input{color:#FFB3B5;text-shadow:0 0 10px rgba(255,90,95,.6)}.fld.hot .k span:first-child,.fld.t.hot .k span:first-child{color:var(--bad);font-weight:600}
 .kwarn{margin:-2px 0 8px;padding:7px 10px;border-radius:10px;background:rgba(255,90,95,.14);border:1px solid rgba(255,90,95,.5);color:#FFC2C3;font-size:13px;font-weight:600;animation:slidein 260ms var(--ease-enter) both}
 .delta{display:flex;justify-content:space-between;align-items:center;gap:4px;margin-top:5px;font-size:10.5px;color:var(--fg3);white-space:nowrap}
 .dchip{font-family:Chakra,Plex,sans-serif;font-weight:700;font-size:11px;padding:1px 6px;border-radius:6px;background:rgba(67,224,138,.12);color:var(--run)}
@@ -316,7 +316,7 @@ function drops(){var ts=readTs(document.getElementById('f-date')?document.getEle
 function dropUI(clicked){try{paintCols()}catch(_){}var c=document.getElementById('drop-card');if(!c)return;var l=st.mode==='act'?[]:drops();c.hidden=!l.length;if(!l.length){return}
   document.getElementById('drop-list').innerHTML=l.map(function(x){return '<div class="drop-it"><b>'+esc(x.name)+'</b><span>'+x.from+' → '+(x.from-x.drop)+' L · ลด '+x.drop+' L ใน '+x.hrs+' ชม. ('+x.rate+' L/ชม.)</span></div>'}).join('');
   var tx=document.getElementById('f-droptext');tx.hidden=st.drop!=='other';if(clicked&&st.drop==='other')tx.focus()}
-var PAGE_VER='v1.9.4';
+var PAGE_VER='v1.9.5';
 /* the team comes from the recorder's name (Settings → Members & teams on the PC) */
 function teamOf(n){var k=String(n||'').toUpperCase(),l=BOOT.members||[];for(var i=0;i<l.length;i++)if(l[i].name===k)return l[i].team||'';return ''}
 function teamShow(){var t=teamOf(document.getElementById('f-rec')?document.getElementById('f-rec').value:''),el=document.getElementById('team-badge');st.team=t;if(el){el.textContent=t?'ทีม '+t+' · Team '+t:'ทีมจะขึ้นเองตามชื่อ';el.className='team-badge'+(t?' on':'')}}
@@ -399,7 +399,7 @@ function form(){var ns=nowShift();st.shift=ns.shift;st.date=ns.date;var d=new Da
   h+='<div class="card"><div class="ph"><h2>ผู้บันทึก</h2><small>Recorder · เลือกทีมแล้วแตะชื่อ</small><span class="dots"><i></i><i></i><i></i></span></div>'+
   '<input id="f-rec" class="vh" readonly tabindex="-1" aria-hidden="true" value="'+esc((BOOT.recorders||[]).indexOf(LS.get('rec'))>=0?LS.get('rec'):'')+'"><div class="seg teams" id="seg-team"></div><div class="names" id="rec-chips"></div>'+
   '<div class="team-badge" id="team-badge" hidden></div>'+
-  '<div style="margin-top:10px" id="statuswrap"><span class="lbl">สถานะเครื่องจักร<span>Machine status</span></span><div class="seg st" id="seg-status"><button data-v="run">ใช้งาน</button><button data-v="stop">เครื่องจักรหยุด</button></div></div></div>'+
+  '<div style="margin-top:10px" id="statuswrap"><span class="lbl">สถานะเครื่องจักร<span>Machine status</span></span><div class="seg st" id="seg-status"><button data-v="run">ใช้งาน</button><button data-v="stop">ไม่ใช้งาน</button></div></div></div>'+
   '<div class="card"><span class="lbl">ส่งล่าสุด<span>Recent</span></span><div class="recent" id="recent"><div><span>กำลังโหลด…</span></div></div></div>'+
   '<div class="who"><span>ข้อมูลจะเข้าโปรแกรมบนคอมอัตโนมัติ · '+PAGE_VER+'</span><button onclick="logout()">เปลี่ยนรหัสทีม</button></div>';
   document.getElementById('app').innerHTML=h;
@@ -410,7 +410,7 @@ function form(){var ns=nowShift();st.shift=ns.shift;st.date=ns.date;var d=new Da
   SYS.forEach(function(s){document.getElementById('f-'+s[2]).addEventListener('input',function(){dropUI()})});['f-time','f-date'].forEach(function(id){var x=document.getElementById(id);if(x){x.addEventListener('input',function(){dropUI()});x.addEventListener('change',function(){dropUI()})}});
   ['f-before','f-after','f-drained'].forEach(function(id){var x=document.getElementById(id);if(x){x.readOnly=true;x.setAttribute('inputmode','none');x.classList.add('fv')}});
   sheetSetup();bootFx();loadRecent();renderPend();flush(false);loadLast()}
-function segs(){[['seg-shift','shift'],['dropreasons','drop'],['seg-status','status'],['seg-mode','mode'],['seg-act','act'],['seg-rsys','rsys'],['reasons','reason']].forEach(function(p){var g=document.getElementById(p[0]);if(!g)return;[].forEach.call(g.children,function(b){b.setAttribute('aria-pressed',String(st[p[1]]===b.dataset.v));b.onclick=function(){st[p[1]]=b.dataset.v;segs();dropUI(p[1]==='drop');if(p[1]==='mode'||p[1]==='act'||p[1]==='rsys'||p[1]==='reason')modeUI(p[1])}})})}
+function segs(){[['seg-shift','shift'],['dropreasons','drop'],['seg-status','status'],['seg-mode','mode'],['seg-act','act'],['seg-rsys','rsys'],['reasons','reason']].forEach(function(p){var g=document.getElementById(p[0]);if(!g)return;[].forEach.call(g.children,function(b){b.setAttribute('aria-pressed',String(st[p[1]]===b.dataset.v));b.onclick=function(){st[p[1]]=b.dataset.v;segs();if(p[1]==='status')try{paintCols()}catch(e){}dropUI(p[1]==='drop');if(p[1]==='mode'||p[1]==='act'||p[1]==='rsys'||p[1]==='reason')modeUI(p[1])}})})}
 function actOf(){return ACTS.filter(function(a){return a[0]===st.act})[0]}
 function modeUI(changed){var ac=st.mode==='act';if(typeof kClose==='function'&&changed)kClose();document.getElementById('m-read').hidden=ac;document.getElementById('m-act').hidden=!ac;document.getElementById('statuswrap').hidden=ac;
   var A=actOf(),t=st.act;document.getElementById('ttl').textContent=ac?actTitle(A):'บันทึกระดับน้ำมัน';
@@ -568,6 +568,9 @@ var IC2={temp:'<path d="M10 14.6V5.5a2 2 0 0 1 4 0v9.1a4.2 4.2 0 1 1-4 0z"/><pat
 /* ===== control-panel look: 3 tank columns + slide ruler / keypad sheet ===== */
 var SCALE={servo:{lo:4500,hi:6500,low:5000},auxiliary:{lo:4500,hi:5750,low:4500},lubrication:{lo:3500,hi:5750,low:3500}};
 var SYSC={servo:['SERVO','#5B9BFF'],auxiliary:['AUX','#2FD3C0'],lubrication:['LUB','#FFB547']};
+var LOW_STOP={servo:5700,auxiliary:5000,lubrication:5100};
+/* standard: Running ≥ low · Not running ≥ lowStop */
+function lowNow(k){var S=scaleOf(k);return st.status==='stop'?(isFinite(S.lowStop)?S.lowStop:LOW_STOP[k]):S.low}
 function scaleOf(k){var s=LAST.scale&&LAST.scale[k];return s&&isFinite(s.lo)&&isFinite(s.hi)&&s.hi>s.lo?s:SCALE[k]}
 function tHigh(k){var v=+((k&&LAST.tempHighs&&LAST.tempHighs[k])||LAST.tempHigh||BOOT.tempHigh);return isFinite(v)&&v>0?v:55}
 var TP={};try{TP=JSON.parse(LS.get('tprev')||'{}')||{}}catch(_){TP={}}
@@ -610,7 +613,7 @@ function colsHTML(){return SYS.map(function(s){var k=s[0];return '<div class="co
 function prevL(k){var p=LAST.last[k];return p&&isFinite(p.level)?+p.level:null}
 function prevT(k){var p=LAST.last[k];if(p&&p.temp!=null&&isFinite(+p.temp))return +p.temp;return TP[k]!=null&&isFinite(+TP[k])?+TP[k]:null}
 function setLevel(k,v){var el=document.getElementById('lv-'+k);if(!el)return;var S=scaleOf(k),f=v==null?0:Math.max(0,Math.min(1,(v-S.lo)/(S.hi-S.lo)));el.style.transform='translateY('+(74-74*f)+'px)';
-  var lw=document.getElementById('low-'+k);if(lw)lw.setAttribute('transform','translate(0 '+(124-74*((S.low-S.lo)/(S.hi-S.lo)))+')')}
+  var lw=document.getElementById('low-'+k);if(lw)lw.setAttribute('transform','translate(0 '+(124-74*Math.max(0,Math.min(1,(lowNow(k)-S.lo)/(S.hi-S.lo))))+')')}
 function setTemp(k,t){var el=document.getElementById('nd-'+k);if(el)el.style.transform='rotate('+(t==null?-80:-80+Math.max(0,Math.min(1,(t-20)/60))*160)+'deg)'}
 var _flash={};
 function paintCols(){if(!document.getElementById('col-servo'))return;var dl=st.mode==='act'?[]:drops(),dk={};dl.forEach(function(x){dk[x.id]=1});var n=0;
@@ -619,7 +622,7 @@ function paintCols(){if(!document.getElementById('col-servo'))return;var dl=st.m
     document.getElementById('pv-'+k).textContent='ก่อน '+(pl!=null?fmtN(pl):'—');
     var c=document.getElementById('d-'+k),lv=L!==''&&!isNaN(+L)?+L:null;
     if(lv!=null&&pl!=null&&String(Math.round(lv)).length>=String(Math.round(pl)).length){var d=Math.round(lv-pl);c.hidden=false;c.textContent=(d>0?'+':d<0?'−':'±')+fmtN(Math.abs(d));c.className='dchip'+(dk[k]?' bad':d>0?' up':'')}else c.hidden=true;
-    var tv=T!==''&&!isNaN(+T)?+T:null,tf=ti.closest('.fld'),hot=tv!=null&&tv>tHigh(k);tf.classList.toggle('hot',hot);tf.querySelector('.k span').textContent=hot?'สูงเกิน '+tHigh(k)+'°':'อุณหภูมิ';
+    var tv=T!==''&&!isNaN(+T)?+T:null,tf=ti.closest('.fld'),hot=tv!=null&&tv>tHigh(k);tf.classList.toggle('hot',hot);tf.querySelector('.k span').textContent=hot?'สูงเกิน '+tHigh(k)+'°':'อุณหภูมิ';var lf=li.closest('.fld'),lo=lowNow(k),under=lv!=null&&String(Math.round(lv)).length>=String(lo).length&&lv<lo;lf.classList.toggle('hot',under);lf.querySelector('.k span').textContent=under?'ต่ำกว่า '+fmtN(lo):'ระดับ';
     setLevel(k,lv!=null&&String(Math.round(lv)).length>=String(Math.round(pl||lv)).length?lv:pl);setTemp(k,T!==''&&!isNaN(+T)?+T:pt);
     var col=document.getElementById('col-'+k);col.classList.toggle('abn',!!dk[k]);if(dk[k]&&!_flash[k]){col.classList.remove('flash');void col.offsetWidth;col.classList.add('flash')}_flash[k]=!!dk[k]});
   var ring=document.getElementById('ring');if(ring){ring.style.strokeDashoffset=113.1*(1-n/6);document.getElementById('ring-t').textContent=n;var b=document.getElementById('send');if(b)b.classList.toggle('ready',n===6)}}
@@ -627,7 +630,7 @@ function paintCols(){if(!document.getElementById('col-servo'))return;var dl=st.m
 var KS={id:null,raw:'',info:null},TW=14,R={cfg:null,lock:0,last:-1};
 var READ_ORDER=[];SYS.forEach(function(s){READ_ORDER.push('f-'+s[2])});SYS.forEach(function(s){READ_ORDER.push('f-'+s[3])});
 function fieldInfo(id){for(var i=0;i<SYS.length;i++){var s=SYS[i],k=s[0];
-    if(id==='f-'+s[2])return {k:k,kind:'L',name:SYSC[k][0],label:'ระดับน้ำมัน (L)',unit:'L',prev:prevL(k),step:25,lo:scaleOf(k).lo-500,hi:scaleOf(k).hi+500,low:scaleOf(k).low,grp:READ_ORDER};
+    if(id==='f-'+s[2])return {k:k,kind:'L',name:SYSC[k][0],label:'ระดับน้ำมัน (L)',unit:'L',prev:prevL(k),step:25,lo:scaleOf(k).lo-500,hi:scaleOf(k).hi+500,low:lowNow(k),grp:READ_ORDER};
     if(id==='f-'+s[3])return {k:k,kind:'T',name:SYSC[k][0],label:'อุณหภูมิ (°C)',unit:'°C',prev:prevT(k),step:0.5,lo:20,hi:90,low:null,high:tHigh(k),grp:READ_ORDER}}
   var k2=st.rsys||'servo',S=scaleOf(k2),grp=['f-before','f-after'];var dr=document.getElementById('f-drained');if(dr&&!dr.closest('.card').hidden)grp=['f-drained','f-before','f-after'];
   var B=val('f-before');

@@ -134,7 +134,7 @@ function drops(){var ts=readTs(document.getElementById('f-date')?document.getEle
 function dropUI(clicked){var c=document.getElementById('drop-card');if(!c)return;var l=st.mode==='act'?[]:drops();c.hidden=!l.length;if(!l.length){return}
   document.getElementById('drop-list').innerHTML=l.map(function(x){return '<div class="drop-it"><b>'+esc(x.name)+'</b><span>'+x.from+' → '+(x.from-x.drop)+' L · ลด '+x.drop+' L ใน '+x.hrs+' ชม. ('+x.rate+' L/ชม.)</span></div>'}).join('');
   var tx=document.getElementById('f-droptext');tx.hidden=st.drop!=='other';if(clicked&&st.drop==='other')tx.focus()}
-var PAGE_VER='v1.9.4';
+var PAGE_VER='v1.9.5';
 /* the team comes from the recorder's name (Settings → Members & teams on the PC) */
 function teamOf(n){var k=String(n||'').toUpperCase(),l=BOOT.members||[];for(var i=0;i<l.length;i++)if(l[i].name===k)return l[i].team||'';return ''}
 function teamShow(){var t=teamOf(document.getElementById('f-rec')?document.getElementById('f-rec').value:''),el=document.getElementById('team-badge');st.team=t;if(el){el.textContent=t?'ทีม '+t+' · Team '+t:'ทีมจะขึ้นเองตามชื่อ';el.className='team-badge'+(t?' on':'')}}
@@ -201,7 +201,7 @@ function form(){var ns=nowShift();st.shift=ns.shift;st.date=ns.date;var d=new Da
   '<div class="card c-reason"><span class="lbl" id="lb-reason">สาเหตุที่เติมเพิ่ม<span>Reason</span></span><div class="reasons" id="reasons"></div><textarea id="f-rtext" placeholder="พิมพ์สาเหตุ…" maxlength="200" hidden></textarea></div></div>';
   h+='<div class="card"><label class="lbl" for="f-rec">ผู้บันทึก<span>Recorder</span></label><input id="f-rec" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="พิมพ์ตัวแรก เช่น O" value="'+esc((BOOT.recorders||[]).indexOf(LS.get('rec'))>=0?LS.get('rec'):'')+'" style="text-transform:uppercase;font-weight:800;letter-spacing:.5px"><div class="rec-chips" id="rec-chips"></div>'+
   '<div class="team-badge" id="team-badge"></div>'+
-  '<div style="margin-top:10px" id="statuswrap"><span class="lbl">สถานะเครื่องจักร<span>Machine status</span></span><div class="seg st" id="seg-status"><button data-v="run">ใช้งาน</button><button data-v="stop">เครื่องจักรหยุด</button></div></div></div>'+
+  '<div style="margin-top:10px" id="statuswrap"><span class="lbl">สถานะเครื่องจักร<span>Machine status</span></span><div class="seg st" id="seg-status"><button data-v="run">ใช้งาน</button><button data-v="stop">ไม่ใช้งาน</button></div></div></div>'+
   '<div class="card"><span class="lbl">ส่งล่าสุด<span>Recent</span></span><div class="recent" id="recent"><div><span>กำลังโหลด…</span></div></div></div>'+
   '<div class="who"><span>ข้อมูลจะเข้าโปรแกรมบนคอมอัตโนมัติ · '+PAGE_VER+'</span><button onclick="logout()">เปลี่ยนรหัสทีม</button></div>';
   document.getElementById('app').innerHTML=h;
