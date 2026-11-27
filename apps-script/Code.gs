@@ -333,8 +333,8 @@ function tempHigh_(c) { const v = Number(c.TEMP_HIGH); return isFinite(v) && v >
 function tempHighs_(c) { const o = {}, d = tempHigh_(c); SYS.forEach(x => o[x[0]] = d);
   String(c.TEMP_HIGHS || '').split(/[\s,;]+/).forEach(x => { const m = /^(servo|auxiliary|lubrication):(\d+(\.\d+)?)$/.exec(x); if (m && Number(m[2]) > 0) o[m[1]] = Number(m[2]); }); return o; }
 /* level swing while rolling (L): a drop up to max is normal use, not an abnormal drop */
-function sysSwing_(c) { const o = { servo: { min: 100, max: 150 }, auxiliary: { min: 100, max: 150 }, lubrication: { min: 100, max: 150 } };
-  String(c.SYS_SWING || '').split(/[\s,;]+/).forEach(x => { const m = /^(servo|auxiliary|lubrication):(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/.exec(x); if (m) o[m[1]] = { min: Number(m[2]), max: Number(m[3]) }; }); return o; }
+function sysSwing_(c) { const o = { servo: { min: 100, max: 200 }, auxiliary: { min: 100, max: 200 }, lubrication: { min: 100, max: 200 } };
+  String(c.SYS_SWING || '').split(/[\s,;]+/).forEach(x => { const m = /^(servo|auxiliary|lubrication):(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/.exec(x); if (m) o[m[1]] = { min: Number(m[2]), max: Number(m[3]) === 150 ? 200 : Number(m[3]) }; }); return o; } /* 150 was the old default → 200 L */
 function phoneBoot(code) {
   const c = cfg_(), ok = !!code && String(code).trim() === c.TEAM_CODE;
   return { ok: true, codeOk: ok, dayStart: c.DAY_START || '08:00', dayEnd: c.DAY_END || '20:00', machine: c.MACHINE || 'HRM Process',
@@ -747,7 +747,7 @@ function submitEvent(code, e) {
   } finally { lock.releaseLock(); }
 }
 
-const SERVER_VER = 'v1.9.6';
+const SERVER_VER = 'v1.9.7';
 /* phone check page asks this to prove the phone can reach the sheet */
 function phoneCheck() {
   const p = PropertiesService.getScriptProperties();

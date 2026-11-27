@@ -311,12 +311,12 @@ function readTs(date,time,shift){var d=/^(\d{4})-(\d{2})-(\d{2})$/.exec(date||''
   if(shift==='night'&&(+t[1]*60+ +t[2])<hm(BOOT.dayStart))ms+=86400000;return ms}
 function drops(){var ts=readTs(document.getElementById('f-date')?document.getElementById('f-date').value:'',val('f-time'),st.shift),out=[];if(ts==null)return out;
   SYS.forEach(function(s){var v=val('f-'+s[2]),p=prevBase(s[0]);if(v===''||isNaN(+v)||!p)return;var hrs=(ts-p.ts)/3600000;if(hrs<0.25||hrs>26)return;var d=p.level-(+v),rate=d/hrs,lim=+LAST.rates[s[0]]||5;
-    var sw=LAST.swing&&LAST.swing[s[0]]&&isFinite(+LAST.swing[s[0]].max)?+LAST.swing[s[0]].max:150;
-    if(rate>lim&&d>sw)out.push({id:s[0],name:s[1],drop:Math.round(d),hrs:Math.round(hrs*10)/10,rate:Math.round(rate*10)/10,from:p.level})});return out}
+    var sw=LAST.swing&&LAST.swing[s[0]]&&isFinite(+LAST.swing[s[0]].max)?+LAST.swing[s[0]].max:200;
+    if(d>sw)out.push({id:s[0],name:s[1],drop:Math.round(d),hrs:Math.round(hrs*10)/10,rate:Math.round(rate*10)/10,from:p.level})});return out}
 function dropUI(clicked){try{paintCols()}catch(_){}var c=document.getElementById('drop-card');if(!c)return;var l=st.mode==='act'?[]:drops();c.hidden=!l.length;if(!l.length){return}
   document.getElementById('drop-list').innerHTML=l.map(function(x){return '<div class="drop-it"><b>'+esc(x.name)+'</b><span>'+x.from+' → '+(x.from-x.drop)+' L · ลด '+x.drop+' L ใน '+x.hrs+' ชม. ('+x.rate+' L/ชม.)</span></div>'}).join('');
   var tx=document.getElementById('f-droptext');tx.hidden=st.drop!=='other';if(clicked&&st.drop==='other')tx.focus()}
-var PAGE_VER='v1.9.6';
+var PAGE_VER='v1.9.7';
 /* the team comes from the recorder's name (Settings → Members & teams on the PC) */
 function teamOf(n){var k=String(n||'').toUpperCase(),l=BOOT.members||[];for(var i=0;i<l.length;i++)if(l[i].name===k)return l[i].team||'';return ''}
 function teamShow(){var t=teamOf(document.getElementById('f-rec')?document.getElementById('f-rec').value:''),el=document.getElementById('team-badge');st.team=t;if(el){el.textContent=t?'ทีม '+t+' · Team '+t:'ทีมจะขึ้นเองตามชื่อ';el.className='team-badge'+(t?' on':'')}}

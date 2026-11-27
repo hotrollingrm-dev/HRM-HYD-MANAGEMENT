@@ -4578,9 +4578,9 @@ const hm=s=>{const [a,b]=String(s||'0:0').split(':').map(Number);return (a||0)*6
 const shiftKey=ts=>isDay(ts)?'day':'night';
 const shiftDateTs=ts=>{const d=new Date(ts);const m=d.getHours()*60+d.getMinutes();return (!isDay(ts)&&m<hm(SHIFT_CFG.dayStart))?sod(sod(ts)-2*H):sod(ts)};
 const SYSHEX={servo:'#4F7FEA',auxiliary:'#1E9E91',lubrication:'#D69330'};
-const DEFAULT_SCALE={servo:{yMin:4500,yMax:6500,majorStep:500,minorStep:100,low:5000,warnDist:100,normalRate:2,abnormalRate:5,swingMin:100,swingMax:150},
-  auxiliary:{yMin:4500,yMax:5750,majorStep:250,minorStep:50,low:4500,warnDist:100,normalRate:1.5,abnormalRate:4,swingMin:100,swingMax:150},
-  lubrication:{yMin:3500,yMax:5750,majorStep:250,minorStep:50,low:3500,warnDist:100,normalRate:1.5,abnormalRate:4,swingMin:100,swingMax:150}};
+const DEFAULT_SCALE={servo:{yMin:4500,yMax:6500,majorStep:500,minorStep:100,low:5000,warnDist:100,normalRate:2,abnormalRate:5,swingMin:100,swingMax:200},
+  auxiliary:{yMin:4500,yMax:5750,majorStep:250,minorStep:50,low:4500,warnDist:100,normalRate:1.5,abnormalRate:4,swingMin:100,swingMax:200},
+  lubrication:{yMin:3500,yMax:5750,majorStep:250,minorStep:50,low:3500,warnDist:100,normalRate:1.5,abnormalRate:4,swingMin:100,swingMax:200}};
 const DEFAULT_TEMP={min:20,max:80,majorStep:10,minorStep:2,high:55};
 const DEFAULT_CONFIG=()=>({machine:'HRM Process',operator:'',gapH:5,notifications:true,shift:{dayStart:'08:00',dayEnd:'20:00'},shift8:true,sys:JSON.parse(JSON.stringify(DEFAULT_SCALE)),temp:{servo:Object.assign({},DEFAULT_TEMP),auxiliary:Object.assign({},DEFAULT_TEMP),lubrication:Object.assign({},DEFAULT_TEMP)}});
 const K_GM='hrmHydraulicGraphMetric',K_GS='hrmHydraulicGraphShift';const METRICS=['oil','temperature','both'];
@@ -4613,7 +4613,7 @@ let _bkT=null;const PYW=()=>window.pywebview&&window.pywebview.api;
 function backupNow(){if(!PYW()||!PYW().backup)return;clearTimeout(_bkT);_bkT=setTimeout(()=>{try{PYW().backup(JSON.stringify({ver:2,saved:Date.now(),lang:selectedLanguage,config:CFG,oils:OILS,records:REC,events:EVTS}))}catch(e){}},600)}
 function saveAll(){backupNow();store.set(K_CONFIG,JSON.stringify(CFG));store.set(K_OIL,JSON.stringify(OILS));store.set(K_REC,JSON.stringify(REC));store.set(K_EVT,JSON.stringify(EVTS))}
 function saveUI(){store.set(K_UI,JSON.stringify({page:UI.page,sb:UI.sb,exp:UI.exp,lastOp:UI.lastOp,lastSys:UI.lastSys}))}
-function mergeCfg(c){const d=DEFAULT_CONFIG();if(!c)return d;const ds=d.shift;const o=Object.assign(d,c);o.shift=Object.assign({},ds,c.shift||{});if(!c.shift8&&o.shift.dayStart==='07:00'&&o.shift.dayEnd==='19:00')o.shift={dayStart:'08:00',dayEnd:'20:00'};o.shift8=true;o.sys={};SYS_IDS.forEach(k=>o.sys[k]=Object.assign({},DEFAULT_SCALE[k],(c.sys&&c.sys[k])||{}));o.temp={};SYS_IDS.forEach(k=>o.temp[k]=Object.assign({},DEFAULT_TEMP,(c.temp&&c.temp[k])||{}));return o}
+function mergeCfg(c){const d=DEFAULT_CONFIG();if(!c)return d;const ds=d.shift;const o=Object.assign(d,c);o.shift=Object.assign({},ds,c.shift||{});if(!c.shift8&&o.shift.dayStart==='07:00'&&o.shift.dayEnd==='19:00')o.shift={dayStart:'08:00',dayEnd:'20:00'};o.shift8=true;o.sys={};SYS_IDS.forEach(k=>o.sys[k]=Object.assign({},DEFAULT_SCALE[k],(c.sys&&c.sys[k])||{}));if(!c.swing200){SYS_IDS.forEach(k=>{if(+o.sys[k].swingMax===150)o.sys[k].swingMax=200});}o.swing200=true;o.temp={};SYS_IDS.forEach(k=>o.temp[k]=Object.assign({},DEFAULT_TEMP,(c.temp&&c.temp[k])||{}));return o}
 function load(){
   const lg=store.get(K_LANG);selectedLanguage=(lg==='ja'||lg==='en')?lg:'en';
   CFG=mergeCfg(getJ(K_CONFIG));SHIFT_CFG=CFG.shift;if(/hot\s*rolling\s*mill/i.test(CFG.machine||''))CFG.machine='HRM Process';const oils=getJ(K_OIL);OILS=mergeOils(oils);
@@ -4653,7 +4653,7 @@ function detectFor(rec,silent){inval();
   const hrs=(rec.ts-prev.ts)/H;if(hrs<0.25||hrs>CFG.gapH+1||!sameSt(prev.status,rec.status))return made;
   let drop=prev.level-rec.level;EVTS.forEach(e=>{if(e.systemType===rec.systemType&&e.ts>prev.ts&&e.ts<=rec.ts&&e.eventType!=='abnormal'&&e.eventType!=='low')drop+=evSigned(e)});
   const rate=drop/hrs;
-  if(rate>c.abnormalRate&&drop>swMax(rec.systemType)&&!EVTS.some(e=>(e.eventType==='abnormal'||e.fromAbnormal)&&e.recId===rec.id)){EVTS.push(Object.assign({id:'EVT-'+uid(),systemType:rec.systemType,eventType:'abnormal',ts:rec.ts,auto:true,recId:rec.id,fromTs:prev.ts,beforeLevel:prev.level,afterLevel:rec.level,rate:r1(rate),amount:Math.round(Math.max(0,drop-c.normalRate*hrs)),status:'investigate',operator:'',note:''},stamp(rec.ts)));made='abnormal'}
+  if(drop>swMax(rec.systemType)&&!EVTS.some(e=>(e.eventType==='abnormal'||e.fromAbnormal)&&e.recId===rec.id)){EVTS.push(Object.assign({id:'EVT-'+uid(),systemType:rec.systemType,eventType:'abnormal',ts:rec.ts,auto:true,recId:rec.id,fromTs:prev.ts,beforeLevel:prev.level,afterLevel:rec.level,rate:r1(rate),amount:Math.round(Math.max(0,drop-c.normalRate*hrs)),status:'investigate',operator:'',note:''},stamp(rec.ts)));made='abnormal'}
   return made}
 
 /* ================= demo data (2 months, 3 systems) ================= */
@@ -4837,9 +4837,9 @@ const metricHas=(m,k)=>m==='both'||m===k;
 function stN(s){return s==='stop'?'stop':'run'}function sameSt(a,b){return stN(a)===stN(b)}
 function abnOf(id,r){const c=sc(id),prev=recAtOrBefore(r.ts-1,id);if(!prev||!sameSt(prev.status,r.status))return null;const hrs=(r.ts-prev.ts)/H;if(hrs<0.25||hrs>26)return null;let drop=prev.level-r.level;
   EVTS.forEach(e=>{if(e.systemType===id&&e.ts>prev.ts&&e.ts<=r.ts&&e.eventType!=='abnormal'&&e.eventType!=='low')drop+=evSigned(e)});const rate=drop/hrs;
-  if(!(rate>(+c.abnormalRate||5))||drop<=swMax(id))return null;const m=/ลดผิดปกติ(?: \[[a-z,]+\])?: ?(.*)$/.exec(String(r.note||''));return {drop:Math.round(drop),rate:Math.round(rate*10)/10,why:m?m[1]:''}}
+  if(drop<=swMax(id))return null;const m=/ลดผิดปกติ(?: \[[a-z,]+\])?: ?(.*)$/.exec(String(r.note||''));return {drop:Math.round(drop),rate:Math.round(rate*10)/10,why:m?m[1]:''}}
 const T_HIGH=id=>{const v=+(id?tc(id).high:NaN);return isFinite(v)&&v>0?v:55};
-const swMax=id=>{const v=+sc(id).swingMax;return isFinite(v)&&v>=0?v:150};
+const swMax=id=>{const v=+sc(id).swingMax;return isFinite(v)&&v>=0?v:200};
 const HOT='#D9363C';
 function renderLane(el,id,days,opt){
   opt=opt||{};const FZ=opt.static?.82:1;const cid='l'+(++chSeq);let c=sc(id),tq=tc(id);
@@ -4876,7 +4876,7 @@ function renderLane(el,id,days,opt){
   /* abnormal drop at a reading (same rule as the record form / phone): vs the previous reading, refills added back */
   const abn=r=>abnOf(id,r);const _unused=r=>{const prev=recAtOrBefore(r.ts-1,id);if(!prev)return null;const hrs=(r.ts-prev.ts)/H;if(hrs<0.25||hrs>26)return null;let drop=prev.level-r.level;
     EVTS.forEach(e=>{if(e.systemType===id&&e.ts>prev.ts&&e.ts<=r.ts&&e.eventType!=='abnormal'&&e.eventType!=='low')drop+=evSigned(e)});const rate=drop/hrs;
-    if(!(rate>(+c.abnormalRate||5))||drop<=swMax(id))return null;const m=/ลดผิดปกติ(?: \[[a-z,]+\])?: ?(.*)$/.exec(String(r.note||''));return {drop:Math.round(drop),rate:Math.round(rate*10)/10,why:m?m[1]:''}};
+    if(drop<=swMax(id))return null;const m=/ลดผิดปกติ(?: \[[a-z,]+\])?: ?(.*)$/.exec(String(r.note||''));return {drop:Math.round(drop),rate:Math.round(rate*10)/10,why:m?m[1]:''}};
   let s=`<svg class="ch" viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}" xmlns="http://www.w3.org/2000/svg" ${font} role="img" aria-label="${esc(T('sys_'+id))}"><defs><linearGradient id="${cid}a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.s}" stop-opacity=".22"/><stop offset="1" stop-color="${C.s}" stop-opacity="0"/></linearGradient><pattern id="${cid}h" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2.5" height="7" fill="${C.fg3}" fill-opacity=".22"/></pattern></defs>`;
   /* left axis: oil (oil / both) or temperature (temperature only) */
   if(showO){const yLow=Yo(c.low),yWarn=Yo(c.low+c.warnDist);
@@ -4924,7 +4924,7 @@ function renderLane(el,id,days,opt){
     oSegs.concat(tSegs).forEach(seg=>seg.forEach(p=>{if(p.main)boxes.push({x0:p.x-4,x1:p.x+4,y0:p.y-4,y1:p.y+4})}));
     const per=sw/shifts.length,fsH=opt.static?(per>=40?11:10):(per>=70?14:per>=40?12.5:10.5);
     const place=(x,y,txt,pref,col,w,fs,pill)=>{const tw=String(txt).length*fs*.58+(pill?10:0),th=fs+(pill?5:2),vert=!pill&&tw>per-3;
-      for(const up of [pref,!pref])for(const gap of [7,13]){let b;
+      for(const up of [pref,!pref])for(const gap of (pill?[7,13,22,32,44]:[7,13])){let b;
         if(vert){const ay=up?y-gap:y+gap;b={x0:x-th/2,x1:x+th/2,y0:up?ay-tw:ay,y1:up?ay:ay+tw}}else{const cy=up?y-gap-th/2:y+gap+th/2;b={x0:x-tw/2,x1:x+tw/2,y0:cy-th/2,y1:cy+th/2}}
         if(b.y0<lo||b.y1>hi||b.x0<pl-2||b.x1>W-pr+2||hit(b))continue;boxes.push(b);
         if(pill)return `<g class="ch-abn"><title>${esc(txt+(pill.why?' · '+pill.why:''))}</title><rect x="${b.x0.toFixed(1)}" y="${b.y0.toFixed(1)}" width="${(b.x1-b.x0).toFixed(1)}" height="${(b.y1-b.y0).toFixed(1)}" rx="${((b.y1-b.y0)/2).toFixed(1)}" fill="#E5484D"/><text x="${x.toFixed(1)}" y="${((b.y0+b.y1)/2+fs*.36).toFixed(1)}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="#fff">${esc(txt)}</text></g>`;
@@ -5329,7 +5329,7 @@ function vSettings(){const f=(id,key,v,type,extra)=>`<label class="field">${L(ke
   const sysCfg=id=>{const c=sc(id);return `<div class="cfg-sys" style="--c:var(--s-${id})"><div class="cfg-h"><span class="sys-dot"></span>${L('sys_'+id)}</div>
     <span class="cfg-sub">${L('scaleRange')}</span><div class="cfg-grid">${num(id,'yMin','yMin',c.yMin)}${num(id,'yMax','yMax',c.yMax)}${num(id,'majorStep','majorStep',c.majorStep)}${num(id,'minorStep','minorStep',c.minorStep)}</div>
     <span class="cfg-sub">${L('zones')}</span><div class="cfg-grid">${num(id,'low','lowThreshold',c.low)}${num(id,'lowStop','lowStopThreshold',lowOf(id,'stop'))}${num(id,'warnDist','warnDistance',c.warnDist)}</div><div class="hint">${T('zoneFormula')}<br>${S2('zoneFormula')}</div>
-    <span class="cfg-sub">${L('swingSec')}</span><div class="cfg-grid">${num(id,'swingMin','swingMin',c.swingMin!=null?c.swingMin:100,5)}${num(id,'swingMax','swingMax',c.swingMax!=null?c.swingMax:150,5)}</div><div class="hint">${T('swingHint')}<br>${S2('swingHint')}</div>
+    <span class="cfg-sub">${L('swingSec')}</span><div class="cfg-grid">${num(id,'swingMin','swingMin',c.swingMin!=null?c.swingMin:100,5)}${num(id,'swingMax','swingMax',c.swingMax!=null?c.swingMax:200,5)}</div><div class="hint">${T('swingHint')}<br>${S2('swingHint')}</div>
     <span class="cfg-sub cfg-temp">${li('temp',18)}${L('tempScale')}</span><div class="cfg-grid">${num(id,'tmin','tMin',tc(id).min,0.5)}${num(id,'tmax','tMax',tc(id).max,0.5)}${num(id,'tmajor','tMajor',tc(id).majorStep,0.5)}${num(id,'tminor','tMinor',tc(id).minorStep,0.5)}${num(id,'thigh','tHighL',tc(id).high!=null?tc(id).high:55,0.5)}</div><div class="form-err" id="errt-${id}" hidden></div>
     <div class="form-err" id="err-${id}" hidden></div></div>`};
   return `<div class="set-page">
@@ -5422,7 +5422,7 @@ function saveRecord3(){const err=$('#r4-err');const fail=(k,v)=>{err.innerHTML=L
   /* abnormal drop vs the previous reading → the cause must be given (same rule as the phone) */
   const dl=[];plan.forEach(p=>p.vals.forEach(x=>{if(x.rid)return;const prev=recAtOrBefore(p.ts-1,x.id);if(!prev||!sameSt(prev.status,p.status))return;const hrs=(p.ts-prev.ts)/H;if(hrs<0.25||hrs>26)return;
     let drop=prev.level-x.n;EVTS.forEach(e=>{if(e.systemType===x.id&&e.ts>prev.ts&&e.ts<=p.ts&&e.eventType!=='abnormal'&&e.eventType!=='low')drop+=evSigned(e)});const rate=drop/hrs;
-    if(rate>(+sc(x.id).abnormalRate||5)&&drop>swMax(x.id))dl.push({sh:p.sh,id:x.id,from:prev.level,to:Math.round(x.n),drop:Math.round(drop),hrs:Math.round(hrs*10)/10,rate:Math.round(rate*10)/10})}));
+    if(drop>swMax(x.id))dl.push({sh:p.sh,id:x.id,from:prev.level,to:Math.round(x.n),drop:Math.round(drop),hrs:Math.round(hrs*10)/10,rate:Math.round(rate*10)/10})}));
   let dropWhy='';{const box=r4DropBox(dl);if(dl.length){const v=box.dataset.v||'',tx=$('#r4-droptext');if(!v){box.scrollIntoView({block:'center'});return fail('errDropReason')}
     if(v==='other'&&!tx.value.trim()){tx.classList.add('bad');tx.focus();return fail('errDropText')}dropWhy=DROP_REASONS.find(r=>r[0]===v)[1]+(v==='other'?' - '+tx.value.trim():'')}}
   const hasNew=plan.some(p=>p.vals.some(x=>!x.rid));
