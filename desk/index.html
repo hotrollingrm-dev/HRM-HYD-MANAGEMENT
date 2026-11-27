@@ -1845,6 +1845,21 @@ html.tab .d6-side{display:none}
 html.lime .nav-item.on .lil .ac{fill:#fff}
 html.lime .btn-primary .lil .ac,html.lime .sidebar .lil .ac{fill:#C6EF4E;opacity:.9}
 html.lime .shseg button.on .lil .ac,html.lime .mseg button.on .lil .ac{fill:#C6EF4E}
+/* unslop polish: lime marks only the selected page, the main action and today; the rest of the chrome stays quiet */
+html.lime body{background:#A8AF99}
+html.lime .topstrip{background:#FFFFFF!important;border:1px solid #E2E5D8!important}
+html.lime .lbl-tg.on{background:#F1F2EA!important;border-color:#E2E5D8!important}
+html.lime .lbl-tg.on .sw{background:#0E0F0C}html.lime .lbl-tg.on svg{color:#0E0F0C}
+html.lime .dsr-k.ok{background:#F1F2EA;color:#0E0F0C}
+html.lime .header{gap:8px}html.lime .header .sync-chip{min-width:0;flex:0 1 auto;overflow:hidden}html.lime .header .sync-chip .bi{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}html.lime .header .mob-chip{flex:none}html.lime .header .ttl .th{font-size:22px!important}
+html.lime .header .ttl{flex:none}
+html.lime .header .ttl .th,html.lime .header .ttl .bi{white-space:nowrap;overflow:visible;text-overflow:clip}
+html.lime .header .ttl .th{font-size:24px;font-weight:600}
+html.lime .header .pill,html.lime .header .sync-chip{background:transparent!important;border-color:transparent!important;box-shadow:none!important;padding-left:4px;padding-right:4px}
+html.lime .lane-scale,html.lime .lc-t{font-weight:500}
+html.lime .empty{text-wrap:balance}
+html.lime .topstrip .cs-l{background:#F1F2EA!important}
+html.lime .header .month-btn .bi,html.lime .header .pill .bi,html.lime .clock span{white-space:nowrap}html.lime .header .month-btn{flex:none}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="icon-defs"></defs></svg>
@@ -4607,7 +4622,7 @@ function load(){
   const oldDemo=Array.isArray(r)&&r.length>200&&store.get('oilMonitorDataVer')!=='2'&&!r.some(x=>x.ts<parseYmd('2026-06-01'));
   if(Array.isArray(r)&&Array.isArray(e)&&!oldDemo){REC=r.filter(x=>{try{return validRec(x)}catch(_){return false}});EVTS=e.filter(x=>{try{return validEvt(x)}catch(_){return false}});migrate()}else{buildDemo();saveAll()}store.set('oilMonitorDataVer','2');
   const u=getJ(K_UI);if(u)Object.assign(UI,{page:u.page||'dashboard',sb:u.sb||null,exp:Object.assign(UI.exp,u.exp||{}),lastOp:u.lastOp||'',lastSys:SYS_IDS.includes(u.lastSys)?u.lastSys:'servo'});
-  const lr=store.get('lastRecorder');if(lr)UI.lastOp=lr;{const gs=store.get(K_GS),gm=store.get(K_GM);UI.shift=['all','day','night'].includes(gs)?gs:shiftKey(Date.now());UI.metric=METRICS.includes(gm)?gm:'both';UI.labels=store.get('hrmHydraulicGraphLabels')!=='0'}
+  const lr=store.get('lastRecorder');if(lr)UI.lastOp=lr;{const gs=store.get(K_GS),gm=store.get(K_GM);UI.shift=['all','day','night'].includes(gs)?gs:shiftKey(Date.now());UI.metric=METRICS.includes(gm)?gm:'both';UI.labels=store.get('hrmGraphLabels2')==='1'}
   const n=new Date(shiftDateTs(Date.now()));UI.month=n.getFullYear()+'-'+pad(n.getMonth()+1);
   {const [ma,mb]=monthRange(UI.month);if(!REC.some(r=>r.ts>=ma&&r.ts<mb)&&REC.length){const lt=Math.max(...REC.map(r=>r.ts));const ld=new Date(lt);UI.month=ld.getFullYear()+'-'+pad(ld.getMonth()+1)}}const t0=sod(Date.now());UI.rep={start:ymd(t0-6*DAY),end:ymd(t0),shift:'all',sys:'all'};
 }
@@ -4912,9 +4927,10 @@ function renderLane(el,id,days,opt){
         return `<text class="ch-lbl" x="${x.toFixed(1)}" y="${((b.y0+b.y1)/2+fs*.36).toFixed(1)}" text-anchor="middle" font-size="${fs}" font-weight="${w}" fill="${col}" stroke="${C.surf}" stroke-width="3" paint-order="stroke">${txt}</text>`}
       return ''};
     abns.forEach(({p,a})=>{s+=place(p.x,p.y,'▼'+fN(a.drop)+' L',false,'#fff',800,opt.static?10:Math.max(10.5,fsH),{why:a.why})});
-    if(opt.labels&&per>=(opt.static?12:8)){
-      oSegs.forEach(seg=>seg.forEach(p=>{if(p.main)s+=place(p.x,p.y,fLit(p.r.level),p.k!=='night',SHC[p.k],700,fsH)}));
-      tSegs.forEach(seg=>seg.forEach(p=>{const hot=p.r.temperature>T_HIGH(id);if(p.main||hot)s+=place(p.x,p.y,fTemp(p.r.temperature)+'°',p.k!=='night',hot?HOT:SHT[p.k],hot?700:500,fsH-.5)}))}}
+    /* labels off = only the latest reading of each shift line, plus hot readings; on = every reading */
+    if(per>=(opt.static?12:8)){const all=!!opt.labels,lastOf=segs=>{const o={};segs.forEach(seg=>seg.forEach(p=>{if(p.main&&(!o[p.k]||p.x>o[p.k].x))o[p.k]=p}));return o},lo=lastOf(oSegs),lt=lastOf(tSegs);
+      oSegs.forEach(seg=>seg.forEach(p=>{if(p.main&&(all||lo[p.k]===p))s+=place(p.x,p.y,fLit(p.r.level),p.k!=='night',SHC[p.k],lo[p.k]===p?700:500,fsH)}));
+      tSegs.forEach(seg=>seg.forEach(p=>{const hot=p.r.temperature>T_HIGH(id);if((p.main&&(all||lt[p.k]===p))||hot)s+=place(p.x,p.y,fTemp(p.r.temperature)+'°',p.k!=='night',hot?HOT:SHT[p.k],hot?700:500,fsH-.5)}))}}
   if(!opt.static)s+=`<rect class="colhl" x="0" y="${pt}" width="${sw}" height="${ih}" rx="6" fill="${C.s}" fill-opacity=".08" opacity="0"/>${shifts.map(k=>(showO?`<circle class="dothl" data-k="${k}" data-m="o" r="6" fill="${SHC[k]}" stroke="${C.surf}" stroke-width="3" opacity="0"/>`:'')+(showT?`<circle class="dothl" data-k="${k}" data-m="t" r="5" fill="${C.surf}" stroke="${SHT[k]}" stroke-width="2.6" opacity="0"/>`:'')).join('')}<rect class="hit" x="${pl}" y="0" width="${iw}" height="${Hh}" fill="transparent"/>`;
   s+=`</svg>`;el.innerHTML=s+mh;el.dataset.metric=met;el.dataset.lay=[W,pl,sw].join(',');
   if(!oSegs.length&&!tSegs.length&&!opt.static)el.insertAdjacentHTML('beforeend',`<div class="empty lane-empty">${L(showT&&!showO?'noData':'chartNoData')}</div>`);
@@ -5076,7 +5092,7 @@ function tlCardHTML(mev,open){const tevs=mev.slice().sort((x,z)=>z.ts-x.ts).slic
   const abn=open.length?`<button class="abn-chip" data-act="confirmAbn" data-id="${open[0].id}" title="${esc(TS('confirmCause'))}">${ico('abnormal',30)}${L('pendingAbn',null,{n:open.length})}</button>`:'';
   return `<div class="card tl3-card glass-card"><div class="card-head">${L('latestEvents','tl3-title')}<button class="link-btn sm" data-act="nav" data-page="events" title="${esc(TS('viewAll'))}">${esc(T('viewAll'))}</button></div>${abn}<div class="list-scroll"><div class="tl3">${tevs.map(e=>`<button class="tl3-item" data-act="evDetail" data-id="${e.id}" style="--c:var(--s-${e.systemType})">${ico(e.eventType,32)}<span class="tl3-body"><span class="tl3-top"><b>${esc(T('ev_'+e.eventType))}</b><span class="num">${sod(e.ts)===sod(Date.now())?fT(e.ts):fDs(e.ts)}</span></span><span class="tl3-en">${esc(S2('ev_'+e.eventType))}</span><span class="tl3-sub"><i></i>${esc(T('short_'+e.systemType))} · <span class="num">${evLine(e)}</span></span></span></button>`).join('')||`<div class="empty">${L('noEventsMonth')}</div>`}</div></div></div>`}
 /* metric / shift change: update the existing graph in place (one state, same lane containers) */
-function setGraphPref(k,v){if(k==='labels'){UI.labels=!!v;store.set('hrmHydraulicGraphLabels',v?'1':'0')}else if(k==='metric'){if(!METRICS.includes(v))return;UI.metric=v;store.set(K_GM,v)}else if(k==='shift'){if(!['all','day','night'].includes(v))return;UI.shift=v;store.set(K_GS,v)}
+function setGraphPref(k,v){if(k==='labels'){UI.labels=!!v;store.set('hrmGraphLabels2',v?'1':'0')}else if(k==='metric'){if(!METRICS.includes(v))return;UI.metric=v;store.set(K_GM,v)}else if(k==='shift'){if(!['all','day','night'].includes(v))return;UI.shift=v;store.set(K_GS,v)}
   if(UI.page!=='dashboard'||!$('.dash6')){render(false,true);return}gtipHide();
   $('.graph-card > .card-head').innerHTML=graphHeadHTML();
   $$('.dash6 .lane').forEach(ln=>{const ch=$('.lane-chart',ln);const id=ch.dataset.sys;$('.lane-h',ln).innerHTML=laneHeadHTML(id);ch.dataset.shift=UI.shift;ch.dataset.metric=UI.metric;renderLane(ch,id,ch.dataset.days.split(',').map(Number),{height:ch.clientHeight,shift:UI.shift,metric:UI.metric,labels:UI.labels,animate:true})});
